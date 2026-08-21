@@ -81,7 +81,8 @@ export async function deepSeekVerdict(
 // Deterministic quality score: fixed weights over bridge QA columns, no LLM variance.
 // Doctrine matches the legacy harness: syntax and PSA dominate, idiom is a capped bonus.
 export function tldrScore(rows: BenchResultRow[]): { score: number; gradeMode: string; avgPsaE: number; avgPsaW: number } | undefined {
-  if (rows.length === 0) return undefined;
+  // Only meaningful when QA columns exist (coding set); otherwise fake scores would render.
+  if (rows.length === 0 || !rows.some((r) => r.QASyntaxOk !== undefined || r.QAGrade !== undefined)) return undefined;
   const n = rows.length;
   const synFail = rows.filter((r) => r.QASyntaxOk === false).length / n;
   const avgPsaE = rows.reduce((a, r) => a + (r.QAPSAErrors ?? 0), 0) / n;
@@ -91,8 +92,7 @@ export function tldrScore(rows: BenchResultRow[]): { score: number; gradeMode: s
   let score = 10
     - 4 * synFail          // syntax failure is fatal-ish: -4 at 100% failure
     - 0.6 * avgPsaE
-    - 0.2 * avgPsaW
-    + Math.min(0.5, (avgIdiom - 70) / 30); // +0.5 max above 70% idiom
+    + Math.max(0, Math.min(0.5, (avgIdiom - 70) / 30)); // pure bonus: 0 below 70%, +0.5 max above
   score = Math.max(0, Math.min(10, score));
   const gradeCounts = new Map<string, number>();
   for (const r of rows) {
