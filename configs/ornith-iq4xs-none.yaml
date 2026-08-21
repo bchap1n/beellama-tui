@@ -1,0 +1,15 @@
+# 131K ctx baseline, think ON — AtomicChat IQ4_XS
+name: ornith-iq4xs-none
+label: Ornith-1.5-35B-A3B IQ4_XS
+description: 131K kvarn KV, think on, no spec
+build: beellama
+model: { gguf: "D:/.lmstudio/models/AtomicChat/Ornith-1.5-35B-A3B-IQ4_XS.gguf", provider: AtomicChat }
+ctx_size: 131072
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+sampling: { temp: 0.6, top_p: 0.95, top_k: 20, min_p: 0.0 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

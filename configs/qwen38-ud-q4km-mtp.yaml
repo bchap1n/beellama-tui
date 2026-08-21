@@ -1,0 +1,16 @@
+# 131K ctx, q4_0 KV, think OFF — baseline UD-Q4_K_M
+name: qwen38-ud-q4km-mtp
+label: Qwen3.8-27B UD-Q4_K_M MTP
+description: 131K q4_0 KV, b4096/ub512, think off, MTP n=2
+build: beellama
+model: { gguf: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_M.gguf" }
+spec: { type: draft-mtp, draft_max: 2 }
+ctx_size: 131072
+batch: 4096
+ubatch: 512
+cache_k: q4_0
+cache_v: q4_0
+kv_tail_tokens: 1024
+reasoning: false
+sampling: { temp: 0.7, top_p: 0.80, top_k: 20, min_p: 0.0, presence_penalty: 1.5, repeat_penalty: 1.0 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

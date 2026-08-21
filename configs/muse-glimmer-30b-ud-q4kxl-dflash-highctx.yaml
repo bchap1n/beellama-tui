@@ -1,0 +1,18 @@
+# 128K ctx with SWA kvarn3 + tail 0, think ON, vision ON — HIGH-CTX 24GB
+name: muse-glimmer-30b-ud-q4kxl-dflash-highctx
+label: Muse Glimmer 30B UD-Q4_K_XL DFlash HighCtx
+description: 131K kvarn4 base + SWA kvarn3, tail 0 f16, think+vision on
+build: beellama
+model:
+  gguf: "D:/.lmstudio/models/unsloth/meta-glimmer30b-gguf/Muse-Glimmer-30B-UD-Q4_K_XL.gguf"
+  mmproj: "D:/.lmstudio/models/meta-models/mmproj-Muse-Glimmer-30B-Q4_K_M.gguf"
+draft: { gguf: "D:/.lmstudio/models/meta-models/z-labs/dflash-Muse-Glimmer-30B-Q4_K_M.gguf" }
+spec: { type: draft-dflash, draft_max: 15 }
+ctx_size: 131072
+batch: 256
+ubatch: 64
+cache_k: kvarn4
+cache_v: kvarn4
+reasoning: true
+sampling: { temp: 1.0, top_p: 0.95, top_k: 64, min_p: 0.0 }
+extra_args: ["--cache-type-k-swa", "kvarn3", "--cache-type-v-swa", "kvarn3", "--kv-tail-tokens", "0", "--kv-tail-type", "f16", "--reasoning-preserve", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

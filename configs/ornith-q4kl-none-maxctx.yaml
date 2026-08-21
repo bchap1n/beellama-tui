@@ -1,0 +1,16 @@
+# 160K ctx, n-cpu-moe 8, think ON
+name: ornith-q4kl-none-maxctx
+label: Ornith-1.5-35B-A3B Q4_K_L MaxCtx
+description: 163K kvarn KV, n-cpu-moe 8, think on, no spec
+tags: [maxctx]
+build: beellama
+model: { gguf: "D:/.lmstudio/models/bartowski/Ornith-1.5-35B-A3B-Q4_K_L.gguf", provider: bartowski }
+ctx_size: 163840
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+sampling: { temp: 0.6, top_p: 0.95, top_k: 20, min_p: 0.0 }
+extra_args: ["--n-cpu-moe", "8", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

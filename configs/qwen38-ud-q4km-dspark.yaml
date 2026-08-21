@@ -1,0 +1,18 @@
+# 64K ctx, q4_0 KV, think ON, DSPark spec-dec n=4
+name: qwen38-ud-q4km-dspark
+label: Qwen3.8-27B UD-Q4_K_M DSPark
+description: 64K q4_0 KV, DSPark drafter n=4, think on (low)
+build: beellama
+model: { gguf: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_M.gguf" }
+draft: { gguf: "D:/.lmstudio/models/dimInfer/Qwen3.8-27B-DSpark-Q8_0.gguf" }
+spec: { type: draft-dspark, draft_max: 4 }
+ctx_size: 65536
+batch: 4096
+ubatch: 512
+cache_k: q4_0
+cache_v: q4_0
+kv_tail_tokens: 1024
+reasoning: true
+reasoning_effort: low
+sampling: { temp: 0.7, top_p: 0.80, top_k: 20, min_p: 0.0, presence_penalty: 1.5, repeat_penalty: 1.0 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

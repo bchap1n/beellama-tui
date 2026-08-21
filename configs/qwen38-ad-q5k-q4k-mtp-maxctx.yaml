@@ -1,0 +1,17 @@
+# Atomic Dynamic AD-Q5_K-Q4_K at 147K, think OFF
+name: qwen38-ad-q5k-q4k-mtp-maxctx
+label: Qwen3.8-27B AD-Q5_K-Q4_K MTP MaxCtx
+description: 147K kvarn KV, think off, MTP n=2
+tags: [maxctx]
+build: beellama
+model: { gguf: "D:/.lmstudio/models/AtomicChat/Qwen3.8-27B-AD-Q5_K-Q4_K.gguf", provider: AtomicChat }
+spec: { type: draft-mtp, draft_max: 2 }
+ctx_size: 147456
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: false
+sampling: { temp: 0.7, top_p: 0.80, top_k: 20, min_p: 0.0, presence_penalty: 1.5, repeat_penalty: 1.0 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
