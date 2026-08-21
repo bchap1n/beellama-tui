@@ -1,0 +1,103 @@
+[
+  {
+    "name": "ps_function_params",
+    "type": "Coding",
+    "description": "Write a PowerShell function with typed parameters, CmdletBinding, and error handling",
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell expert. Write clean, idiomatic PowerShell code with type annotations, error handling, and proper cmdlet naming." },
+      { "role": "user", "content": "Write a PowerShell function named Get-FileReport that accepts a folder path (string) and a recurse switch, then returns a custom object with file count, total size in bytes, and newest file timestamp. Use [CmdletBinding()], typed parameters, and try/catch for directory access errors." }
+    ],
+    "expected": { "hasCmdletBinding": true, "hasTypedParams": true, "hasTryCatch": true, "functionName": "Get-FileReport" }
+  },
+  {
+    "name": "ps_pipeline_filter",
+    "type": "Coding",
+    "description": "Write a PowerShell pipeline function with begin/process/end and filtering",
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell expert. Write clean, idiomatic PowerShell code using the pipeline, begin/process/end blocks, and proper error handling." },
+      { "role": "user", "content": "Write a PowerShell function named Select-LargeFiles that accepts pipeline input of file objects and outputs only files larger than 10MB. Must use begin/process/end blocks and typed parameters." }
+    ],
+    "expected": { "hasBeginProcessEnd": true, "hasPipelineInput": true, "functionName": "Select-LargeFiles" }
+  },
+  {
+    "name": "ps_rest_api",
+    "type": "Coding",
+    "description": "Write a PowerShell function that calls a REST API with proper error handling",
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell expert. Write clean, idiomatic PowerShell code for REST API interaction." },
+      { "role": "user", "content": "Write a PowerShell function named Invoke-ApiRequest that takes a URI (string), method (string, default 'GET'), and body (hashtable, optional). Use Invoke-RestMethod with try/catch, return the response, and handle 404/401 errors with specific messages. Use [CmdletBinding()]." }
+    ],
+    "expected": { "hasCmdletBinding": true, "hasTryCatch": true, "usesInvokeRestMethod": true }
+  },
+  {
+    "name": "ps_error_handling",
+    "type": "Coding",
+    "description": "Write PowerShell with proper error handling patterns",
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell expert. Demonstrate proper error handling." },
+      { "role": "user", "content": "Write a PowerShell function named Remove-SafeItem that deletes a file or folder but only if it exists. Use Test-Path before Remove-Item. Trap errors with try/catch. Use [CmdletBinding()] with SupportsShouldProcess for -WhatIf support. Include a -Force switch parameter." }
+    ],
+    "expected": { "hasCmdletBinding": true, "hasShouldProcess": true, "hasTryCatch": true, "functionName": "Remove-SafeItem" }
+  },
+  {
+    "name": "ps_module_structure",
+    "type": "Coding",
+    "description": "Write a well-structured PowerShell module with exported functions",
+    "maxTokens": 4096,
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell expert. Write a well-structured module." },
+      { "role": "user", "content": "Write a PowerShell script module (.psm1) named DataTools with two exported functions: ConvertTo-JsonSafe (handles circular references with -Depth) and Merge-Hashtable (deep merges two hashtables, second overrides first). Use proper comment-based help, Export-ModuleMember, and typed parameters." }
+    ],
+    "expected": { "hasExportModuleMember": true, "hasTwoFunctions": true, "hasCommentHelp": true }
+  },
+  {
+    "name": "ps_date_math",
+    "type": "Coding",
+    "description": "Write PowerShell date/time manipulation with type safety",
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell expert. Write clean PowerShell for date/time operations." },
+      { "role": "user", "content": "Write a PowerShell function named Get-BusinessDays that takes a start date (datetime) and an integer count, then returns an array of that many business days (Mon-Fri) starting from the start date, skipping weekends. Use typed parameters and comment-based help." }
+    ],
+    "expected": { "hasTypedParams": true, "functionName": "Get-BusinessDays", "handlesWeekends": true }
+  },
+  {
+    "name": "ps_csv_processing",
+    "type": "Coding",
+    "description": "Write PowerShell CSV processing with proper pipeline and type handling",
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell expert. Write PowerShell for data processing tasks." },
+      { "role": "user", "content": "Write a PowerShell function named Group-CsvData that reads a CSV file path (string parameter), groups rows by a specified column name, and outputs a summary object per group with count, min, max, and average values of a specified numeric column. Use Import-Csv, Group-Object, and ForEach-Object." }
+    ],
+    "expected": { "hasTypedParams": true, "usesPipelineCmdlets": true, "functionName": "Group-CsvData" }
+  },
+  {
+    "name": "ps_registry_read",
+    "type": "Coding",
+    "description": "Write PowerShell registry access with proper error handling and admin awareness",
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell expert. Write PowerShell for system administration." },
+      { "role": "user", "content": "Write a PowerShell function named Get-RegistryValue that reads a registry key path and value name, returns the value. Handle missing keys gracefully (return $null, not an error). Use Get-ItemProperty with try/catch. Include -ErrorAction Stop on the registry access and comment-based help." }
+    ],
+    "expected": { "hasTryCatch": true, "functionName": "Get-RegistryValue", "handlesMissing": true }
+  },
+  {
+    "name": "ps_parallel_jobs",
+    "type": "Coding",
+    "description": "Write PowerShell parallel execution with ForEach-Object -Parallel",
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell expert. Write PowerShell for parallel operations." },
+      { "role": "user", "content": "Write a PowerShell function named Invoke-ParallelPing that takes an array of computer names (string[]) and pings each one in parallel using ForEach-Object -Parallel with Test-Connection. Return a custom object per host with ComputerName, Online (bool), and ResponseTime (int ms). Set a 2-second timeout per ping." }
+    ],
+    "expected": { "hasTypedParams": true, "usesForEachParallel": true, "functionName": "Invoke-ParallelPing" }
+  },
+  {
+    "name": "ps_json_config",
+    "type": "Coding",
+    "description": "Write PowerShell configuration file handling with JSON",
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell expert. Write PowerShell for configuration management." },
+      { "role": "user", "content": "Write a PowerShell function named Update-ConfigFile that reads a JSON config file path (string), accepts a hashtable of updates via a parameter, merges the updates into the config, and writes back pretty-printed JSON. Use try/catch for file operations and ConvertFrom-Json/ConvertTo-Json. Handle missing files by creating them." }
+    ],
+    "expected": { "hasTryCatch": true, "functionName": "Update-ConfigFile", "handlesMissingFile": true }
+  }
+]

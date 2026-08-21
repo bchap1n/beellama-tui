@@ -1,0 +1,48 @@
+[
+  {
+    "name": "ctx_needle_recall",
+    "type": "LongContext",
+    "targetChars": 500000,
+    "needleOffset": 0.50,
+    "needle": "The vault passphrase for run 7F3A is ORNITH-KVAR4-NCMOE8.",
+    "messages": [
+      { "role": "system", "content": "You are a helpful assistant. Answer concisely based on the provided context." },
+      { "role": "user", "content": "What is the vault passphrase for run 7F3A? Reply with only the passphrase." }
+    ]
+  },
+  {
+    "name": "ctx_code_extract",
+    "type": "LongContext",
+    "targetChars": 500000,
+    "needleOffset": 0.75,
+    "needle": "function ConvertTo-SafeJson { param([Parameter(Mandatory)][object]$InputObject,[int]$Depth=8) $InputObject | ConvertTo-Json -Depth $Depth -Compress }",
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell 7 coding assistant. Answer from the provided context." },
+      { "role": "user", "content": "The context contains ConvertTo-SafeJson. Rewrite it to reject circular references without hanging. Output only the function." }
+    ]
+  },
+  {
+    "name": "ctx_multi_hop",
+    "type": "LongContext",
+    "targetChars": 500000,
+    "needles": [
+      { "offset": 0.20, "text": "Node ALPHA stores the expert count 256." },
+      { "offset": 0.80, "text": "Node BETA stores the active-expert count 8." }
+    ],
+    "messages": [
+      { "role": "system", "content": "You are a helpful assistant. Answer concisely based on the provided context." },
+      { "role": "user", "content": "Using only ALPHA and BETA facts in the context, how many experts are inactive per token? Reply with one integer." }
+    ]
+  },
+  {
+    "name": "ctx_agent_summary",
+    "type": "LongContext",
+    "targetChars": 500000,
+    "needleOffset": 0.90,
+    "needle": "tool_call: write path=C:/Users/brock/Documents/github/beellama/run/Ornith-1.5-35B-A3B-Q4_K_L-none-maxctx-beellama.ps1 status=ok",
+    "messages": [
+      { "role": "system", "content": "You are a helpful assistant. Answer concisely based on the provided context." },
+      { "role": "user", "content": "Which file path did the agent write in the tool_call? Reply with only the path." }
+    ]
+  }
+]

@@ -1,0 +1,34 @@
+[
+  {
+    "name": "code_ps_json_api",
+    "type": "Code",
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell 7 coding assistant. Output only the function, no extra prose." },
+      { "role": "user", "content": "Write a PowerShell 7 function Invoke-JsonApi. Parameters: [string]$Uri (Mandatory), [ValidateSet('GET','POST','PUT','DELETE')][string]$Method = 'GET', [hashtable]$Headers, [object]$Body, [int]$MaxRetry = 3, [int]$TimeoutSec = 30. Requirements: [CmdletBinding()], comment-based help, typed params, exponential backoff retry on 429/5xx, CancellationToken support, return a PSCustomObject with StatusCode, Headers, Content. Use Invoke-RestMethod. Handle timeouts without hanging." }
+    ]
+  },
+  {
+    "name": "code_ps_apply_patch",
+    "type": "Code",
+    "messages": [
+      { "role": "system", "content": "You are a PowerShell 7 coding assistant. Output only the function, no extra prose." },
+      { "role": "user", "content": "function Get-ProcessReport {\n  param($Name)\n  $out = @()\n  Get-Process | Where-Object { $_.Name -like $Name } | ForEach-Object {\n    $out += [pscustomobject]@{ Name = $_.Name; CPU = $_.CPU; WS = $_.WS }\n  }\n  $out | Sort-Object CPU -Descending\n}\n\nRewrite Get-ProcessReport for PowerShell 7. Use [CmdletBinding(SupportsShouldProcess)], typed params, begin/process/end, ValueFromPipeline, ForEach-Object -Parallel for the process walk, and no += on arrays. Output only the revised function." }
+    ]
+  },
+  {
+    "name": "reason_oom_debug",
+    "type": "Reasoning",
+    "messages": [
+      { "role": "system", "content": "You are a helpful assistant. Think step by step." },
+      { "role": "user", "content": "A 24 GB RTX 3090 llama-server launch of Ornith-1.5-35B-A3B Q4_K_L (20.7 GiB on disk) used -c 163840 --cache-type-k kvarn4 --cache-type-v kvarn3 -b 2048 -ub 256 -ngl all and no --n-cpu-moe. Prefill OOMs at ~23.8 GB. Existing IQ4_XS (18.73 GiB) ran the same -c with --n-cpu-moe 4. What is the root cause, and what is the single flag change that fits 160K with ~2 GB spike room? Answer with the flag and a one-sentence why." }
+    ]
+  },
+  {
+    "name": "reason_kv_budget",
+    "type": "Reasoning",
+    "messages": [
+      { "role": "system", "content": "You are a helpful assistant. Think step by step." },
+      { "role": "user", "content": "A 24 GB card must run a 20.7 GiB MoE, kvarn4/kvarn3 KV at ~27.5 kB/token, 0.5 GiB overhead, and 0.49 GiB per MoE layer offloaded by --n-cpu-moe. Compute the largest context (multiple of 16384) that fits at --n-cpu-moe 8 with at least 2.0 GiB spike room. Show the arithmetic, then the token count." }
+    ]
+  }
+]

@@ -1,0 +1,40 @@
+KV cache stores per-layer keys and values so decode does not recompute the full prompt.
+Prefill is compute bound. Decode is memory-bandwidth bound on a discrete GPU.
+Mixture of experts activates a small subset of experts per token and leaves the rest idle.
+Speculative decoding drafts several tokens and the target model accepts or rejects them.
+DFlash uses a cross-attention drafter. MTP uses a multi-token prediction head.
+Random token haystacks collapse draft acceptance. Coherent prose keeps it honest.
+A 24 GB card has little room after a 20 GiB quant. Context is paid in KV bytes per token.
+KVarN compresses KV into 2 to 8 bit records with a 128 token exact tail.
+Offloading MoE layers to RAM trades decode speed for context headroom.
+Unified memory boxes have more capacity and less bandwidth than a 3090.
+An agent session is system prompt plus file dumps plus tool results, not a riddle.
+Tool calls arrive as structured blocks. The model must echo paths exactly.
+Needle in a haystack is a recall probe. Speed benches still need unique prefixes.
+llama-server prefix cache will reuse a shared prompt prefix across requests.
+Unique first tokens per prompt prevent fake TTFT on the second longctx task.
+Batch size 2048 and ubatch 256 is the none/MTP pattern on this harness.
+DFlash scripts stay at batch 256 ubatch 64. Do not mix the two.
+Flash attention should stay on. Cache ram 0 keeps KV on GPU.
+Think-on models emit reasoning_content. tok/s must count those tokens.
+LocalMaxxing remote speed tests use one warmup and three timed iterations.
+llama-bench default is pp512 tg128. Depth -d is a separate measurement.
+RULER and LongBench are quality suites. This file is only filler text.
+Qwen3.8 27B is dense with an MTP head. Ornith 1.5 35B-A3B is a 256 expert MoE.
+Glimmer 30B is dense with sliding window attention on most layers.
+A passphrase planted at mid context tests whether the KV path still attends.
+A function planted at three-quarter depth tests code extract under load.
+Two facts at 20 percent and 80 percent test multi-hop lookup.
+An agent write at 90 percent tests late-context tool-trace recall.
+Paragraph IDs in the expander header make every line unique per prompt name.
+Do not mention Qwen3.6 or Luce KVFlash in this seed. Those docs are retired here.
+Consumer 3090 power limit on this box is 250 W. Prefill draws more than decode.
+Context 131072 at kvarn4/kvarn3 is about 3.5 GB of KV on Ornith-class heads.
+Context 262144 is native for qwen35moe. YaRN is not used in this bench.
+CancellationToken on Invoke-RestMethod needs a linked source and timeout.
+ForEach-Object -Parallel cannot use += on a captured array from the caller.
+CmdletBinding SupportsShouldProcess gates file writes behind WhatIf.
+Exponential backoff on 429 uses 2 to the attempt seconds plus jitter.
+JSON circular references must be detected with a seen set, not unbounded Depth.
+Inactive experts equal expert count minus active count when one shared expert is ignored.
+The agent file path in the late needle is the Q4_K_L maxctx launch script.
