@@ -3,21 +3,22 @@
 
 // TUI variant: 5 lines, compact, fits a header strip.
 export const BEE_TUI = [
-  " \\'-.   ",
-  " (o o)  ",
-  " (\\_/)~",
-  "  \" \"   ",
+  ",,,      ",
+  " (O)(O)  ",
+  "  \\~~/   ",
+  "  {vv}~  ",
+  "  \"\"\"\"   ",
 ];
 
-// Report variant: larger, used as <pre> in HTML.
+// Report variant: larger, used as <pre> in HTML. Eyes + mandibles only.
 export const BEE_HTML = String.raw`
-      /\     /\
-     {  \.__./  }
-      \  (@@)  /
-       \/|--|\/
-        |'--'|
-         '--'
-    b e e l l a m a
+     ,,,,,
+    | O O |
+    |  \^/  |
+     \_v_/
+    /|''|\
+     '----'
+   b e e l l a m a
 `;
 
 export function beeHtml(color = "#ffd60a"): string {
