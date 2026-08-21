@@ -2,7 +2,7 @@
 import { Box, Text } from "ink";
 import type { BenchProgress } from "../bench/runner.ts";
 
-export type Scope = "filtered" | "all" | "picked";
+export type Scope = "selected" | "filtered" | "all" | "picked";
 
 export interface BenchPanelState {
   open: boolean;
@@ -19,7 +19,7 @@ export interface BenchPanelState {
   resultDir?: string;
 }
 
-const SCOPES: Scope[] = ["filtered", "all", "picked"];
+const SCOPES: Scope[] = ["selected", "filtered", "all", "picked"];
 const SETS = ["standard", "coding", "longctx"] as const;
 
 export function Benchmark(props: { state: BenchPanelState }): React.ReactElement {

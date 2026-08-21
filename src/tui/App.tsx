@@ -35,7 +35,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const [stats, setStats] = useState<SessionStats | undefined>(undefined);
   const [bench, setBench] = useState<BenchPanelState>({
     open: false, scopeRow: 0, setRow: 0, runsRow: 6,
-    scope: "filtered", picked: new Set(), set: "standard", runs: props.appCfg.benchmark.runs,
+    scope: "selected", picked: new Set(), set: "standard", runs: props.appCfg.benchmark.runs,
     running: false,
   });
   const trackerRef = useRef<SessionTracker | undefined>(undefined);
@@ -118,6 +118,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     let targets: ResolvedConfig[];
     if (state.scope === "all") targets = configs;
     else if (state.scope === "picked") targets = configs.filter((c) => state.picked.has(c.name));
+    else if (state.scope === "selected") targets = rows[selected] ? [rows[selected]] : [];
     else targets = visibleRows;
     if (targets.length === 0) {
       setBench((b) => ({ ...b, summary: "no configs in scope" }));
@@ -144,7 +145,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     } catch (e) {
       setBench((b) => ({ ...b, running: false, summary: `failed: ${e instanceof Error ? e.message : String(e)}` }));
     }
-  }, [configs]);
+  }, [configs, rows, selected]);
 
   useInput((input, key) => {
     if (bench.running) {
@@ -168,12 +169,12 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     if (bench.open) {
       if (key.escape) { setBench((b) => ({ ...b, open: false })); return; }
       if (key.upArrow) setBench((b) => ({ ...b, scopeRow: Math.max(0, b.scopeRow - 1), setRow: Math.max(0, b.setRow - 1), runsRow: Math.max(4, b.runsRow - 1) }));
-      else if (key.downArrow) setBench((b) => ({ ...b, scopeRow: Math.min(2, b.scopeRow + 1), setRow: Math.min(2, b.setRow + 1), runsRow: Math.min(6, b.runsRow + 1) }));
+      else if (key.downArrow) setBench((b) => ({ ...b, scopeRow: Math.min(3, b.scopeRow + 1), setRow: Math.min(2, b.setRow + 1), runsRow: Math.min(6, b.runsRow + 1) }));
       else if (input === " ") {
         setBench((b) => {
           const row = b.runsRow <= 2 ? b.scopeRow : b.runsRow <= 5 ? b.setRow : 6;
-          if (row <= 2) {
-            const scopes = ["filtered", "all", "picked"] as const;
+          if (row <= 3) {
+            const scopes = ["selected", "filtered", "all", "picked"] as const;
             return { ...b, scope: scopes[row], scopeRow: row };
           }
           if (row <= 5) {
