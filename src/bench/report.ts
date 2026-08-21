@@ -92,6 +92,7 @@ export function tldrScore(rows: BenchResultRow[]): { score: number; gradeMode: s
   let score = 10
     - 4 * synFail          // syntax failure is fatal-ish: -4 at 100% failure
     - 0.6 * avgPsaE
+    - 0.2 * avgPsaW
     + Math.max(0, Math.min(0.5, (avgIdiom - 70) / 30)); // pure bonus: 0 below 70%, +0.5 max above
   score = Math.max(0, Math.min(10, score));
   const gradeCounts = new Map<string, number>();
