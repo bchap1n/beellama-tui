@@ -9,6 +9,7 @@ import { getRunningServer, launchServer, stopServer } from "../server.ts";
 import { SessionTracker } from "../metrics.ts";
 import { ConfigList } from "./ConfigList.tsx";
 import { Filters, emptyFilters, filtersActive, matchesFilters, type FacetFilters } from "./Filters.tsx";
+import { Sources } from "./Sources.tsx";
 import { LaunchView, OutputView } from "./LaunchView.tsx";
 import { StatsBar } from "./StatsBar.tsx";
 import { Benchmark, type BenchPanelState } from "./Benchmark.tsx";
@@ -27,6 +28,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const [sortIdx, setSortIdx] = useState(0);
   const [showOutput, setShowOutput] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
+  const [showSources, setShowSources] = useState(false);
   const [server, setServer] = useState(() => getRunningServer());
   const [error, setError] = useState<string | undefined>(undefined);
   const [stats, setStats] = useState<SessionStats | undefined>(undefined);
@@ -188,6 +190,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       if (cfg) void doLaunch(cfg);
     }
     else if (input === "b") setBench((b) => ({ ...b, open: !b.open }));
+    else if (input === "m") setShowSources((v) => !v);
     else if (input === " ") {
       const cfg = rows[selected];
       if (cfg) setBench((b) => {
@@ -247,13 +250,14 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       <ConfigList rows={rows} selected={selected} />
       {filterText && <Text>filter: /{filterText}_</Text>}
       <Text dimColor>
-        {rows.length}/{configs.length} shown · sort {sortLabel} · up/down select · enter launch · / filter · f facets · s sort · b bench · v output · x stop · l relaunch · space pick · q quit
+        {rows.length}/{configs.length} shown · sort {sortLabel} · up/down select · enter launch · / filter · f facets · s sort · b bench · v output · x stop · l relaunch · space pick · m sources · q quit
       </Text>
       <StatsBar stats={stats} />
       <LaunchView server={server} error={error} />
       {showOutput && <OutputView server={server} />}
       {(bench.open || bench.running) && <Benchmark state={bench} />}
       {showFilters && <Filters rows={configs} filters={filters} />}
+      {showSources && <Sources roots={props.appCfg.model_roots} rows={configs} />}
     </Box>
   );
 }
