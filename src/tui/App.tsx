@@ -34,7 +34,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const [error, setError] = useState<string | undefined>(undefined);
   const [stats, setStats] = useState<SessionStats | undefined>(undefined);
   const [bench, setBench] = useState<BenchPanelState>({
-    open: false, scopeRow: 0, setRow: 0, runsRow: 6,
+    open: false, focus: 0,
     scope: "selected", picked: new Set(), set: "standard", runs: props.appCfg.benchmark.runs,
     running: false,
   });
@@ -168,24 +168,24 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
 
     if (bench.open) {
       if (key.escape) { setBench((b) => ({ ...b, open: false })); return; }
-      if (key.upArrow) setBench((b) => ({ ...b, scopeRow: Math.max(0, b.scopeRow - 1), setRow: Math.max(0, b.setRow - 1), runsRow: Math.max(4, b.runsRow - 1) }));
-      else if (key.downArrow) setBench((b) => ({ ...b, scopeRow: Math.min(3, b.scopeRow + 1), setRow: Math.min(2, b.setRow + 1), runsRow: Math.min(6, b.runsRow + 1) }));
-      else if (input === " ") {
+      const SCOPES = ["selected", "filtered", "all", "picked"] as const;
+      const SETS = ["standard", "coding", "longctx"] as const;
+      if (key.upArrow) setBench((b) => ({ ...b, focus: Math.max(0, b.focus - 1) as 0 | 1 | 2 }));
+      else if (key.downArrow) setBench((b) => ({ ...b, focus: Math.min(2, b.focus + 1) as 0 | 1 | 2 }));
+      else if (key.leftArrow || key.rightArrow || input === " ") {
+        const dir = key.leftArrow ? -1 : 1;
         setBench((b) => {
-          const row = b.runsRow <= 2 ? b.scopeRow : b.runsRow <= 5 ? b.setRow : 6;
-          if (row <= 3) {
-            const scopes = ["selected", "filtered", "all", "picked"] as const;
-            return { ...b, scope: scopes[row], scopeRow: row };
+          if (b.focus === 0) {
+            const next = (SCOPES.indexOf(b.scope) + dir + SCOPES.length) % SCOPES.length;
+            return { ...b, scope: SCOPES[next] };
           }
-          if (row <= 5) {
-            const sets = ["standard", "coding", "longctx"] as const;
-            return { ...b, set: sets[b.setRow], setRow: b.setRow };
+          if (b.focus === 1) {
+            const next = (SETS.indexOf(b.set) + dir + SETS.length) % SETS.length;
+            return { ...b, set: SETS[next] };
           }
-          return b;
+          return { ...b, runs: Math.max(1, Math.min(5, b.runs + dir)) };
         });
       }
-      else if (key.leftArrow && bench.runsRow === 6) setBench((b) => ({ ...b, runs: Math.max(1, b.runs - 1) }));
-      else if (key.rightArrow && bench.runsRow === 6) setBench((b) => ({ ...b, runs: Math.min(5, b.runs + 1) }));
       else if (key.return) void startBench(bench, rows);
       else if (input === "o" && bench.resultDir) {
         void Bun.spawn(["cmd", "/c", "start", "", `${bench.resultDir}/results.html`]).exited;

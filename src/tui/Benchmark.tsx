@@ -6,9 +6,7 @@ export type Scope = "selected" | "filtered" | "all" | "picked";
 
 export interface BenchPanelState {
   open: boolean;
-  scopeRow: number;
-  setRow: number;
-  runsRow: number;
+  focus: 0 | 1 | 2; // 0 scope, 1 prompts, 2 runs
   scope: Scope;
   picked: Set<string>;
   set: "standard" | "coding" | "longctx";
@@ -35,28 +33,23 @@ export function Benchmark(props: { state: BenchPanelState }): React.ReactElement
         <>
           <Text>
             {"  scope   "}
-            <Text color={s.scopeRow === 0 ? "greenBright" : undefined}>{s.scopeRow === 0 ? "❯ " : "  "}{labelOf(SCOPES[0], s)}</Text>
-            {"   "}
-            {SCOPES.slice(1).map((sc, i) => (
-              <Text key={sc} color={s.scopeRow === i + 1 ? "greenBright" : undefined}>
-                {s.scopeRow === i + 1 ? "❯ " : "  "}{labelOf(sc, s)}{"  "}
+            {SCOPES.map((sc, i) => (
+              <Text key={sc} color={s.focus === 0 && s.scope === sc ? "greenBright" : s.scope === sc ? undefined : "gray"}>
+                {s.focus === 0 && s.scope === sc ? "❯ " : "  "}{labelOf(sc, s)}{"  "}
               </Text>
             ))}
           </Text>
           <Text>
             {"  prompts "}
             {SETS.map((st, i) => (
-              <Text key={st} color={s.setRow === i ? "greenBright" : undefined}>
-                {s.setRow === i ? "❯ " : "  "}{st}{i < SETS.length - 1 ? "  " : ""}
+              <Text key={st} color={s.focus === 1 && s.set === st ? "greenBright" : s.set === st ? undefined : "gray"}>
+                {s.focus === 1 && s.set === st ? "❯ " : "  "}{st}{i < SETS.length - 1 ? "  " : ""}
               </Text>
             ))}
           </Text>
-          <Text>
-            {"  runs    "}
-            <Text color={s.runsRow === 6 ? "greenBright" : undefined}>
-              {s.runsRow === 6 ? "❯ " : "  "}{s.runs}
-            </Text>
-            <Text dimColor>  (←/→ when focused)</Text>
+          <Text color={s.focus === 2 ? "greenBright" : undefined}>
+            {"  runs    "}{s.focus === 2 ? "❯ " : "  "}{s.runs}
+            {s.focus !== 2 && <Text dimColor>  (↑/↓ to focus, ←/→ to change)</Text>}
           </Text>
           {s.scope === "picked" && (
             <Text dimColor>  picked: {s.picked.size > 0 ? [...s.picked].join(", ") : "(none yet — press space on config rows)"}</Text>
