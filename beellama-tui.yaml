@@ -1,0 +1,19 @@
+# beellama-tui app configuration.
+beellama_repo: C:/Users/brock/Documents/github/beellama
+model_roots:
+  - D:/.lmstudio/models
+  - C:/Users/brock/.lmstudio/models
+server:
+  host: 127.0.0.1
+  port: 8082
+configs_dir: configs
+gpu_power_limit_watts: 250
+benchmark:
+  runs: 3
+  max_tokens: 2048
+  warmup_runs: 3
+  warmup_tokens: 256
+  cooldown_sec: 0
+  config_cooldown_sec: 60
+  retries: 2
+  timeout_sec: 180
