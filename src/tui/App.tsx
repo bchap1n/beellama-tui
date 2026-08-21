@@ -21,8 +21,9 @@ const SORT_KEYS: SortKey[] = ["name", "model", "quant", "ctx", "provider", "spec
 
 function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: string[] }): React.ReactElement {
   const { exit } = useApp();
-  const [configs] = useState(props.configs);
+  const [configs, setConfigs] = useState(props.configs);
   const [selected, setSelected] = useState(0);
+  const [parseErrors, setParseErrors] = useState<string[]>(props.errors);
   const [filterText, setFilterText] = useState("");
   const [filters, setFilters] = useState<FacetFilters>(emptyFilters);
   const [sortIdx, setSortIdx] = useState(0);
@@ -70,6 +71,22 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   useEffect(() => {
     if (selected >= rows.length) setSelected(Math.max(0, rows.length - 1));
   }, [rows, selected]);
+  const rescan = useCallback(async () => {
+    setError(undefined);
+    const appCfg = await loadAppConfig();
+    const { configs: fresh, errors } = await loadAll(appCfg);
+    const resolvedFresh: ResolvedConfig[] = [];
+    for (const c of fresh) {
+      try {
+        resolvedFresh.push(resolveConfig(c, resolveBinary(c.build, appCfg), "", appCfg.model_roots));
+      } catch (e) {
+        errors.push(`${c.name}: ${e instanceof Error ? e.message.split("\n")[0] : String(e)}`);
+      }
+    }
+    setConfigs(resolvedFresh);
+    setParseErrors(errors);
+  }, []);
+
 
   const doLaunch = useCallback(async (cfg: ResolvedConfig) => {
     setError(undefined);
@@ -184,7 +201,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     else if (input === "s") setSortIdx((i) => (i + 1) % SORT_KEYS.length);
     else if (input === "v" || (key.meta && input === "v")) setShowOutput((v) => !v);
     else if (input === "x") void doStop();
-    else if (input === "r") window.location.reload();
+    else if (input === "r") void rescan();
     else if (input === "l") {
       const cfg = configs.find((c) => c.name === lastLaunchedRef.current);
       if (cfg) void doLaunch(cfg);
@@ -246,7 +263,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   return (
     <Box flexDirection="column">
       <Text bold color="green">beellama-tui</Text>
-      {props.errors.map((e) => <Text key={e} color="red">✗ {e}</Text>)}
+      {parseErrors.map((e) => <Text key={e} color="red">✗ {e}</Text>)}
       <ConfigList rows={rows} selected={selected} />
       {filterText && <Text>filter: /{filterText}_</Text>}
       <Text dimColor>

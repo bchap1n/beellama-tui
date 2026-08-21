@@ -91,6 +91,7 @@ export function parseLaunchConfig(text: string, file: string): LaunchConfig {
   if (raw.tags !== undefined) {
     if (!Array.isArray(raw.tags) || !raw.tags.every((t) => typeof t === "string"))
       err(file, "tags", "must be a list of strings");
+    cfg.tags = raw.tags;
   }
   if (modelRaw.provider !== undefined) cfg.model.provider = asString(modelRaw.provider, file, "model.provider");
   if (modelRaw.mmproj !== undefined) cfg.model.mmproj = asString(modelRaw.mmproj, file, "model.mmproj");

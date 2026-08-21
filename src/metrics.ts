@@ -59,6 +59,9 @@ export class SessionTracker {
         this.stats.outputTokens = snap.tokens_predicted_total;
         this.stats.specDraftTokens = snap.spec_decode_num_draft_tokens_total;
         this.stats.specAcceptedTokens = snap.spec_decode_num_accepted_tokens_total;
+        this.stats.elapsedSec = Math.round((now - this.startedAt) / 1000);
+        this.stats.updatedAt = new Date().toISOString();
+        await persistCurrent(this.stats);
       }
       this.lastSnap = snap;
       this.lastAt = now;
