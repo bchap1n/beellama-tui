@@ -1,6 +1,6 @@
 // Prompt-set loading + LongCtx haystack expansion (faithful port of Expand-LongCtxPrompts).
-import { join } from "node:path";
 import { readFile } from "node:fs/promises";
+import { appFile } from "../approot.ts";
 
 export interface PromptMessage {
   role: string;
@@ -25,10 +25,9 @@ const SET_FILES: Record<SetName, string> = {
   longctx: "prompts-longctx.json",
 };
 
-export const PROMPTS_DIR = join(import.meta.dir, "..", "..", "prompts");
 
 export async function loadPromptSet(set: SetName): Promise<PromptDef[]> {
-  const raw = JSON.parse(await readFile(join(PROMPTS_DIR, SET_FILES[set]), "utf8")) as PromptDef[];
+  const raw = JSON.parse(await readFile(appFile("prompts", SET_FILES[set]), "utf8")) as PromptDef[];
   if (set === "longctx") return expandLongCtx(raw, await loadHaystackSeed());
   return raw;
 }
@@ -72,6 +71,6 @@ export function expandLongCtx(prompts: PromptDef[], seedText: string): PromptDef
 }
 
 export function loadHaystackSeed(): Promise<string> {
-  return readFile(join(PROMPTS_DIR, "haystack-seed.txt"), "utf8");
+  return readFile(appFile("prompts", "haystack-seed.txt"), "utf8");
 }
 

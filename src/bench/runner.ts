@@ -159,11 +159,11 @@ export async function runBenchmark(
     const facets = deriveFacets(rc, appCfg.model_roots);
     onProgress?.({ configIndex: ci, configCount: resolvedList.length, configName: rc.name, promptIndex: 0, promptCount: prompts.length, runIndex: 0, runCount: runs, tokPerSec: 0, phase: "starting" });
 
-    let serverUp = false;
+    // A manually-launched server would otherwise answer for every config.
+    await stopServer();
     if (!opts.url) {
       try {
         await launchServer(rc, appCfg);
-        serverUp = true;
       } catch (e) {
         failures.push(`${rc.name}: ${e instanceof Error ? e.message : String(e)}`);
         onProgress?.({ configIndex: ci, configCount: resolvedList.length, configName: rc.name, promptIndex: 0, promptCount: prompts.length, runIndex: 0, runCount: runs, tokPerSec: 0, phase: "failed", note: e instanceof Error ? e.message : String(e) });
@@ -181,7 +181,7 @@ export async function runBenchmark(
 
     // Warmup
     onProgress?.({ configIndex: ci, configCount: resolvedList.length, configName: rc.name, promptIndex: 0, promptCount: prompts.length, runIndex: 0, runCount: runs, tokPerSec: 0, phase: "warming" });
-    for (let w = 0; w < bench.warmup_runs; w++) {
+    for (let w = 0; w < bench.warmup_runs && !shouldAbort?.(); w++) {
       try {
         await runPromptStreaming(prompts[0].messages, baseUrl, bench.warmup_tokens, bench.timeout_sec);
       } catch {
@@ -192,11 +192,11 @@ export async function runBenchmark(
     // Measured runs
     for (let pi = 0; pi < prompts.length; pi++) {
       const p = prompts[pi];
-      for (let ri = 0; ri < runs; ri++) {
-        if (shouldAbort?.()) break;
+      for (let ri = 0; ri < runs && !shouldAbort?.(); ri++) {
         onProgress?.({ configIndex: ci, configCount: resolvedList.length, configName: rc.name, promptIndex: pi + 1, promptCount: prompts.length, runIndex: ri + 1, runCount: runs, tokPerSec: 0, phase: "running" });
         let attempt = 0;
         for (;;) {
+          if (shouldAbort?.()) break;
           try {
             const m = await runPromptStreaming(p.messages, baseUrl, bench.max_tokens, bench.timeout_sec * 2);
             const decodeMs = m.wallMs > m.ttftMs ? m.wallMs - m.ttftMs : m.wallMs;
@@ -238,7 +238,7 @@ export async function runBenchmark(
 
     onProgress?.({ configIndex: ci, configCount: resolvedList.length, configName: rc.name, promptIndex: prompts.length, promptCount: prompts.length, runIndex: runs, runCount: runs, tokPerSec: 0, phase: "stopping" });
     await stopServer();
-    if (bench.config_cooldown_sec > 0 && ci < resolvedList.length - 1) {
+    if (bench.config_cooldown_sec > 0 && ci < resolvedList.length - 1 && !shouldAbort?.()) {
       await Bun.sleep(bench.config_cooldown_sec * 1000);
     }
   }

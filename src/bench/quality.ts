@@ -3,6 +3,7 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { appFile } from "../approot.ts";
 import type { AppConfig, QualityResult } from "../types.ts";
 
 export interface QaInput {
@@ -26,7 +27,7 @@ export async function runQualityAnalysis(
 ): Promise<(QualityResult | undefined)[]> {
   if (samples.length === 0) return [];
   const qaPath = join(appCfg.beellama_repo, "benchmark", "quality_analysis.ps1");
-  const driverPath = join(import.meta.dir, "..", "..", "scripts", "qa-driver.ps1");
+  const driverPath = appFile("scripts", "qa-driver.ps1");
   const out: (QualityResult | undefined)[] = samples.map(() => undefined);
   let dir: string | undefined;
   try {

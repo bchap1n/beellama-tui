@@ -41,6 +41,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const trackerRef = useRef<SessionTracker | undefined>(undefined);
   const lastLaunchedRef = useRef<string | undefined>(undefined);
   const abortBenchRef = useRef(false);
+  const outputScrollRef = useRef(0);
 
   // Server liveness + stats refresh
   useEffect(() => {
@@ -135,7 +136,9 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       setBench((b) => ({
         ...b,
         running: false,
-        summary: `done — ${targets.length} config(s), ${state.set} set`,
+        summary: abortBenchRef.current
+          ? `aborted — partial results in ${latestBenchDir() ?? "benchmarks/"}`
+          : `done — ${targets.length} config(s), ${state.set} set`,
         resultDir: latestBenchDir(),
       }));
     } catch (e) {
@@ -149,6 +152,9 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
         abortBenchRef.current = true;
         setBench((b) => ({ ...b, summary: "aborting after current run…" }));
       }
+      // Live view stays usable while the bench runs.
+      else if (input === "v" || (key.meta && input === "v")) setShowOutput((v) => !v);
+      else if (key.pageUp || key.pageDown) outputScrollRef.current += key.pageDown ? 10 : -10;
       return;
     }
 
@@ -271,7 +277,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       </Text>
       <StatsBar stats={stats} />
       <LaunchView server={server} error={error} />
-      {showOutput && <OutputView server={server} />}
+      {showOutput && <OutputView server={server} scrollRef={outputScrollRef} />}
       {(bench.open || bench.running) && <Benchmark state={bench} />}
       {showFilters && <Filters rows={configs} filters={filters} />}
       {showSources && <Sources roots={props.appCfg.model_roots} rows={configs} />}

@@ -24,9 +24,9 @@ export function LaunchView(props: {
   );
 }
 
-export function OutputView(props: { server: RunningServer | undefined }): React.ReactElement {
+export function OutputView(props: { server: RunningServer | undefined; scrollRef?: React.MutableRefObject<number> }): React.ReactElement {
   const [, setTick] = useState(0);
-  const [scrollback, setScrollback] = useState(0);
+  const scrollback = props.scrollRef?.current ?? 0;
   useEffect(() => {
     const t = setInterval(() => setTick((n) => n + 1), 500);
     return () => clearInterval(t);

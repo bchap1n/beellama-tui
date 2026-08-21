@@ -2,6 +2,7 @@
 import { writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import type { BenchResultRow } from "../types.ts";
+import { appFile } from "../approot.ts";
 import { median } from "./runner.ts";
 
 // Byte-for-byte legacy header from run_benchmark.ps1 results.csv.
@@ -207,7 +208,7 @@ export async function writeReport(
       dataLines.push(`  - ${pn}: ${m.toFixed(1)} tok/s ${g ? `grade ${g}` : ""}`);
     }
   }
-  const verdict = await deepSeekVerdict(dataLines.join("\n"), configs.length, join(import.meta.dir, "..", "..", "prompts"));
+  const verdict = await deepSeekVerdict(dataLines.join("\n"), configs.length, appFile("prompts"));
   if (verdict) {
     analysisHtml = `<div class='section'>deepseek analysis // deepseek-v4-flash</div><div class='analysis-text'>${esc(verdict).replace(/\n/g, "<br>")}</div>`;
   } else if (setName === "coding") {

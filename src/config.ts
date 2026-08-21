@@ -2,6 +2,7 @@
 import { parse as parseYaml } from "yaml";
 import { join } from "node:path";
 import type { AppConfig } from "./types.ts";
+import { appFile } from "./approot.ts";
 
 const DEFAULTS: AppConfig = {
   beellama_repo: "C:/Users/brock/Documents/github/beellama",
@@ -24,7 +25,7 @@ const DEFAULTS: AppConfig = {
 export async function loadAppConfig(cwd = process.cwd()): Promise<AppConfig> {
   const candidates = [
     join(cwd, "beellama-tui.yaml"),
-    join(import.meta.dir, "..", "beellama-tui.yaml"),
+    appFile("beellama-tui.yaml"),
   ];
   for (const p of candidates) {
     const f = Bun.file(p);
