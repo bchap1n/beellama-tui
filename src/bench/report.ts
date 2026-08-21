@@ -78,6 +78,30 @@ export async function deepSeekVerdict(
   }
 }
 
+// Deterministic quality score: fixed weights over bridge QA columns, no LLM variance.
+// Doctrine matches the legacy harness: syntax and PSA dominate, idiom is a capped bonus.
+export function tldrScore(rows: BenchResultRow[]): { score: number; gradeMode: string; avgPsaE: number; avgPsaW: number } | undefined {
+  if (rows.length === 0) return undefined;
+  const n = rows.length;
+  const synFail = rows.filter((r) => r.QASyntaxOk === false).length / n;
+  const avgPsaE = rows.reduce((a, r) => a + (r.QAPSAErrors ?? 0), 0) / n;
+  const avgPsaW = rows.reduce((a, r) => a + (r.QAPSAWarnings ?? 0), 0) / n;
+  const idioms = rows.map((r) => r.QAIdiomScore).filter((v): v is number => v !== undefined && v >= 0);
+  const avgIdiom = idioms.length > 0 ? idioms.reduce((a, b) => a + b, 0) / idioms.length : 0;
+  let score = 10
+    - 4 * synFail          // syntax failure is fatal-ish: -4 at 100% failure
+    - 0.6 * avgPsaE
+    - 0.2 * avgPsaW
+    + Math.min(0.5, (avgIdiom - 70) / 30); // +0.5 max above 70% idiom
+  score = Math.max(0, Math.min(10, score));
+  const gradeCounts = new Map<string, number>();
+  for (const r of rows) {
+    if (r.QAGrade) gradeCounts.set(r.QAGrade, (gradeCounts.get(r.QAGrade) ?? 0) + 1);
+  }
+  const gradeMode = [...gradeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "-";
+  return { score: Number(score.toFixed(1)), gradeMode, avgPsaE: Number(avgPsaE.toFixed(1)), avgPsaW: Number(avgPsaW.toFixed(1)) };
+}
+
 function esc(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -99,6 +123,21 @@ export async function writeReport(
     byConfig.set(r.Config, list);
   }
 
+  // TLDR: deterministic per-config scores, stable across runs.
+  const tldrRows = configs
+    .map((c) => ({ cfg: c, tok: median((byConfig.get(c) ?? []).map((r) => r.TokPerSec)), s: tldrScore(byConfig.get(c) ?? []) }))
+    .filter((e) => e.s !== undefined);
+  let tldrHtml = "";
+  if (tldrRows.length > 0) {
+    const ranked = [...tldrRows].sort((a, b) => b.s!.score - a.s!.score);
+    const winner = ranked[0];
+    tldrHtml = "<div class='section'>TLDR — deterministic score (fixed rubric, no LLM)</div><table class='tldr'>" +
+      "<tr><th>config</th><th>score</th><th>grade mode</th><th>PSA err/warn avg</th><th>tok/s</th></tr>" +
+      ranked.map((e) =>
+        `<tr${e.cfg === winner.cfg ? " class='winner'" : ""}><th>${esc(e.cfg)}</th><td><b>${e.s!.score.toFixed(1)}</b>/10</td><td>${esc(e.s!.gradeMode)}</td><td>${e.s!.avgPsaE}/${e.s!.avgPsaW}</td><td>${e.tok.toFixed(1)}</td></tr>`,
+      ).join("") +
+      "</table>";
+  }
   let cardsHtml = "";
   for (const cfg of configs) {
     const list = byConfig.get(cfg) ?? [];
@@ -157,7 +196,8 @@ export async function writeReport(
     if (list.length === 0) continue;
     const tok = median(list.map((r) => r.TokPerSec));
     const ttft = median(list.map((r) => r.TTFT_Ms));
-    dataLines.push(`CONFIG: ${cfg} | ${tok.toFixed(1)} tok/s median TTFT ${ttft.toFixed(0)}ms`);
+    const s = tldrRows.find((e) => e.cfg === cfg)?.s;
+    dataLines.push(`CONFIG: ${cfg} | TLDR score ${s ? s.score.toFixed(1) + "/10" : "n/a"} grade mode ${s?.gradeMode ?? "-"} | ${tok.toFixed(1)} tok/s median TTFT ${ttft.toFixed(0)}ms | PSA err/warn avg ${s ? `${s.avgPsaE}/${s.avgPsaW}` : "n/a"}`);
     for (const pn of promptNames) {
       const rs = list.filter((r) => r.Prompt === pn);
       if (rs.length === 0) continue;
@@ -191,12 +231,15 @@ export async function writeReport(
   table { border-collapse:collapse; margin:12px 0; }
   th, td { border:1px solid #1e5c31; padding:4px 10px; text-align:right; font-size:13px; }
   th:first-child, td:first-child { text-align:left; }
+  .tldr td b { color:#7dff9e; font-size:15px; }
+  .tldr .winner th, .tldr .winner td { background:#12240f; }
   .section { color:#7dff9e; margin-top:28px; border-bottom:1px solid #1e5c31; padding-bottom:4px; }
   .dim { color:#3f7a4e; }
   .analysis-text { line-height:1.5; white-space:normal; }
   summary { cursor:pointer; color:#7dff9e; margin-top:20px; }
 </style></head><body>
 <h1>beellama-tui benchmark — ${esc(setName)} — ${new Date().toISOString()}</h1>
+${tldrHtml}
 <div class="cards">${cardsHtml}</div>
 <div class="section">per-prompt median tok/s</div>
 <table><tr><th>prompt</th>${configs.map((c) => `<th>${esc(c)}</th>`).join("")}</tr>${tableRows}</table>
