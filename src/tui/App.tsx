@@ -13,6 +13,7 @@ import { Sources } from "./Sources.tsx";
 import { LaunchView, OutputView } from "./LaunchView.tsx";
 import { StatsBar } from "./StatsBar.tsx";
 import { Benchmark, type BenchPanelState } from "./Benchmark.tsx";
+import { BEE_TUI } from "../bee.ts";
 import { runBenchmark, type BenchProgress } from "../bench/runner.ts";
 import type { AppConfig, ResolvedConfig, SessionStats } from "../types.ts";
 
@@ -269,7 +270,13 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const sortLabel = SORT_KEYS[sortIdx];
   return (
     <Box flexDirection="column">
-      <Text bold color="green">beellama-tui</Text>
+      <Box>
+        <Text color="yellow">{BEE_TUI.join("\n")}</Text>
+        <Box flexDirection="column" marginLeft={1}>
+          <Text bold color="yellow">beellama-tui</Text>
+          <Text dimColor>{rows.length} configs · {props.appCfg.model_roots.length} sources</Text>
+        </Box>
+      </Box>
       {parseErrors.map((e) => <Text key={e} color="red">✗ {e}</Text>)}
       <ConfigList rows={rows} selected={selected} />
       {filterText && <Text>filter: /{filterText}_</Text>}

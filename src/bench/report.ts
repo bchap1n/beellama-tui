@@ -4,6 +4,7 @@ import { join } from "node:path";
 import type { BenchResultRow } from "../types.ts";
 import { appFile } from "../approot.ts";
 import { median } from "./runner.ts";
+import { beeHtml } from "../bee.ts";
 
 // Byte-for-byte legacy header from run_benchmark.ps1 results.csv.
 export const CSV_HEADER =
@@ -239,8 +240,11 @@ export async function writeReport(
   .dim { color:#3f7a4e; }
   .analysis-text { line-height:1.5; white-space:normal; }
   summary { cursor:pointer; color:#7dff9e; margin-top:20px; }
+  .bee { font-family:'JetBrains Mono',monospace; line-height:1.1; margin:0; float:left; margin-right:28px; }
+  .head { overflow:hidden; margin-bottom:8px; }
+  h1 { margin-top:0; }
 </style></head><body>
-<h1>beellama-tui benchmark — ${esc(setName)} — ${new Date().toISOString()}</h1>
+<div class="head">${beeHtml()}<h1>beellama-tui benchmark — ${esc(setName)} — ${new Date().toISOString()}</h1></div>
 ${tldrHtml}
 <div class="cards">${cardsHtml}</div>
 <div class="section">per-prompt median tok/s</div>
