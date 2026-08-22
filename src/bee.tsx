@@ -158,11 +158,10 @@ export function Art(props: { motif?: Motif }): React.ReactElement {
 // Back-compat export used by App.tsx
 export const Bee = Art;
 
-// Tiny static RTX glyph for tight corners: 4 rows, visible on black.
+// Tiny static RTX glyph for tight corners: 3 rows (user cap: under 4).
 const RTX_TINY: Seg[][] = toSegments([
   "gggggggggggggg",
-  "gfg gfg gfg gf",
-  "gxxxxxxxxxxxxg",
+  "g RTX3090 gfgg",
   "gggggggggggggg",
 ]);
 
