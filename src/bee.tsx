@@ -1,11 +1,14 @@
-// Pixel-art bee face shared by the TUI header and benchmark reports.
-// Hand-authored 2-frame animation: big compound eyes, mandibles, wing flap.
-// Art chars: d = body (bright yellow), w = wings (dim gold), e = eyes (near-black).
+// ANSI pixel art for the TUI header and benchmark reports.
+// Two motifs, selectable: the bee (animated flap) and the RTX 3090 FE (static).
+// Art chars per motif map to kind codes; KIND_COLORS maps kinds to colors.
 
 export type Seg = [string, string]; // [text, kind]
 
-// Frame A: wings out to the sides.
-const FRAME_A: string[] = [
+export type Motif = "bee" | "rtx3090";
+
+// ---------------- bee (hand-authored 2-frame) ----------------
+
+const BEE_A: string[] = [
   "                 ",
   "  ww         ww  ",
   "   wdddddddddw   ",
@@ -18,8 +21,7 @@ const FRAME_A: string[] = [
   "     dd    dd    ",
 ];
 
-// Frame B: wings raised above the head.
-const FRAME_B: string[] = [
+const BEE_B: string[] = [
   "   ww      ww    ",
   "    ww    ww     ",
   "   wdddddddddw   ",
@@ -32,18 +34,35 @@ const FRAME_B: string[] = [
   "     dd    dd    ",
 ];
 
-// Eye sockets punched into rows 4-6 (dark cells inside the yellow face).
-const EYES: Array<[number, number]> = [
+const BEE_EYES: Array<[number, number]> = [
   [4, 5], [4, 6], [5, 4], [5, 5], [5, 6], [6, 5], [6, 6],
   [4, 10], [4, 11], [5, 10], [5, 11], [5, 12], [6, 10], [6, 11],
 ];
-for (const frame of [FRAME_A, FRAME_B]) {
-  for (const [y, x] of EYES) {
+for (const frame of [BEE_A, BEE_B]) {
+  for (const [y, x] of BEE_EYES) {
     if (frame[y]?.[x] === "d") {
       frame[y] = frame[y].slice(0, x) + "e" + frame[y].slice(x + 1);
     }
   }
 }
+
+// ---------------- RTX 3090 Founders Edition (small, static) ----------------
+// g = shroud body (dark gray), f = fan blades (silver), c = copper accents,
+// x = GEFORCE text area (white), s = slot bracket (gray).
+const RTX: string[] = [
+  "                                ",
+  " ggfgfgfgfgfgfgfgfgfgfgfgfgfgg  ",
+  " gffffffffffffffffffffffffffcg  ",
+  " gfcc gfc  gfc  gfc  gfc  ccfg  ",
+" gfc  gfc  gfc  gfc  gfc   cfg  ",
+" gfcc gfc  gfc  gfc  gfc  ccfg  ",
+" gffffffffffffffffffffffffffcg  ",
+" ggxxxxxxxxxxxxxxxxxxxxxxxxggg  ",
+" ggx  G E F O R C E  R T X  xgg ",
+" ggggggggggggggggggggggggggggg  ",
+"   ss                           ",
+"   ss                           ",
+];
 
 function toSegments(art: string[]): Seg[][] {
   return art.map((line) => {
@@ -55,29 +74,65 @@ function toSegments(art: string[]): Seg[][] {
     };
     for (const ch of line) {
       const k =
-        ch === "d" ? "1" :
+        ch === "d" || ch === "f" ? "1" :
         ch === "w" ? "2" :
-        ch === "e" ? "3" : "0";
-      if (k === curK) cur += k === "0" ? " " : "█";
-      else { flush(); curK = k; cur = k === "0" ? " " : "█"; }
+        ch === "e" ? "3" :
+        ch === "g" ? "4" :
+        ch === "c" ? "5" :
+        ch === "x" || /[A-Z]/.test(ch) ? "6" :
+        ch === "s" ? "7" : "0";
+      const literal = k === "6" && ch !== "x"; // letters render as themselves
+      if (k === curK) cur += k === "0" ? " " : literal ? ch : "█";
+      else { flush(); curK = k; cur = k === "0" ? " " : literal ? ch : "█"; }
     }
     flush();
     return segs;
   });
 }
 
-export const BEE_FRAMES: Seg[][][] = [toSegments(FRAME_A), toSegments(FRAME_B)];
+export const BEE_FRAMES: Seg[][][] = [
+  [toSegments(BEE_A)][0] ?? toSegments(BEE_A),
+  toSegments(BEE_B),
+];
+export const RTX_SEGMENTS: Seg[][] = toSegments(RTX);
 
 import React, { useEffect, useState } from "react";
 import { Text } from "ink";
 
-const KIND_COLORS: Record<string, string | undefined> = {
-  "1": "#ffd60a", // body bright yellow
-  "2": "#8a7516", // wings dim gold
-  "3": "#241f00", // eyes near-black on yellow face
+const MOTIF_COLORS: Record<string, Record<string, string | undefined>> = {
+  bee: {
+    "1": "#ffd60a", // body bright yellow
+    "2": "#8a7516", // wings dim gold
+    "3": "#241f00", // eyes near-black on yellow face
+  },
+  rtx3090: {
+    "1": "#9aa0a6", // fan blades silver
+    "4": "#202124", // shroud near-black
+    "5": "#b06c3f", // copper accents
+    "6": "#e8eaed", // GeForce text pale
+    "7": "#5f6368", // bracket gray
+  },
 };
 
-export function Bee(): React.ReactElement {
+export function Art(props: { motif?: Motif }): React.ReactElement {
+  const motif = props.motif ?? "bee";
+  const colors = MOTIF_COLORS[motif];
+  if (motif === "rtx3090") {
+    return (
+      <Text>
+        {RTX_SEGMENTS.map((row, ri) => (
+          <Text key={ri}>
+            {row.map(([text, kind], si) =>
+              kind === "0" || !colors[kind]
+                ? <Text key={si}>{text}</Text>
+                : <Text key={si} color={colors[kind]}>{text}</Text>,
+            )}
+            {ri < RTX_SEGMENTS.length - 1 ? "\n" : ""}
+          </Text>
+        ))}
+      </Text>
+    );
+  }
   const [f, setF] = useState(0);
   useEffect(() => {
     const t = setInterval(() => setF((n) => n + 1), 170);
@@ -89,9 +144,9 @@ export function Bee(): React.ReactElement {
       {frame.map((row, ri) => (
         <Text key={ri}>
           {row.map(([text, kind], si) =>
-            kind === "0" || !KIND_COLORS[kind]
+            kind === "0" || !colors[kind]
               ? <Text key={si}>{text}</Text>
-              : <Text key={si} color={KIND_COLORS[kind]}>{text}</Text>,
+              : <Text key={si} color={colors[kind]}>{text}</Text>,
           )}
           {ri < frame.length - 1 ? "\n" : ""}
         </Text>
@@ -100,26 +155,40 @@ export function Bee(): React.ReactElement {
   );
 }
 
-export function beeHtml(): { css: string; html: string } {
+// Back-compat export used by App.tsx
+export const Bee = Art;
+
+export function beeHtml(motif: Motif = "bee"): { css: string; html: string } {
+  const palette =
+    motif === "bee"
+      ? { b: "#ffd60a", w: "#8a7516", e: "#241f00" }
+      : { b: "#9aa0a6", w: "#202124", e: "#b06c3f" };
   const css = `
-  .bee-wrap { display:inline-block; float:left; margin-right:24px; width:19ch; }
-  .bee { font-family:'JetBrains Mono',monospace; line-height:1.05; margin:0; font-size:10px; }
-  .bee .b { color:#ffd60a; } .bee .w { color:#8a7516; } .bee .e { color:#241f00; }
-  .bee.fB { opacity:0; animation: flapB 340ms steps(1) infinite; }
+  .art-wrap { display:inline-block; float:left; margin-right:24px; width:34ch; overflow:hidden; }
+  .art { font-family:'JetBrains Mono',monospace; line-height:1.05; margin:0; font-size:10px; }
+  .art .b { color:${palette.b}; } .art .w { color:${palette.w}; } .art .e { color:${palette.e}; }
+  ${motif === "bee" ? `
+  .art.fB { opacity:0; animation: flapB 340ms steps(1) infinite; }
   @keyframes flapB { 0%,49% { opacity:0; } 50%,100% { opacity:1; } }
-  .bee.fA { animation: flapA 340ms steps(1) infinite; }
-  @keyframes flapA { 0%,49% { opacity:1; } 50%,100% { opacity:0; } }`;
+  .art.fA { animation: flapA 340ms steps(1) infinite; }
+  @keyframes flapA { 0%,49% { opacity:1; } 50%,100% { opacity:0; } }` : ""}`;
 
   const cls: Record<string, string> = { "1": "b", "2": "w", "3": "e" };
-  const render = (segs: Seg[][]): string =>
+  const renderOne = (segs: Seg[][]): string =>
     segs.map((row) =>
       row.map(([text, kind]) =>
-        kind === "0" ? `<span>${text.replace(/&/g, "&amp;")}</span>`
-        : `<span class="${cls[kind]}">${text}</span>`).join(""))
+        kind === "0" ? `<span>${text}</span>`
+        : `<span class="${cls[kind] ?? "b"}">${text}</span>`).join(""))
       .join("\n");
 
-  const html =
-    `<div class="bee-wrap"><pre class="bee fA">${render(BEE_FRAMES[0])}</pre>` +
-    `<pre class="bee fB">${render(BEE_FRAMES[1])}</pre></div>`;
+  let html: string;
+  if (motif === "bee") {
+    html =
+      `<div class="art-wrap"><pre class="art fA">${renderOne(BEE_FRAMES[0])}</pre>` +
+      `<pre class="art fB">${renderOne(BEE_FRAMES[1])}</pre></div>`;
+  } else {
+    html = `<div class="art-wrap"><pre class="art">${renderOne(RTX_SEGMENTS)}</pre></div>`;
+  }
+  void palette;
   return { css, html };
 }
