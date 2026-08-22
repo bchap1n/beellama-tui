@@ -58,7 +58,7 @@ const RTX: string[] = [
 " gfcc gfc  gfc  gfc  gfc  ccfg  ",
 " gffffffffffffffffffffffffffcg  ",
 " ggxxxxxxxxxxxxxxxxxxxxxxxxggg  ",
-" ggx  G E F O R C E  R T X  xgg ",
+" ggx      R T X 3 0 9 0      xgg ",
 " ggggggggggggggggggggggggggggg  ",
 "   ss                           ",
 "   ss                           ",
@@ -79,7 +79,7 @@ function toSegments(art: string[]): Seg[][] {
         ch === "e" ? "3" :
         ch === "g" ? "4" :
         ch === "c" ? "5" :
-        ch === "x" || /[A-Z]/.test(ch) ? "6" :
+        ch === "x" || /[A-Z0-9]/.test(ch) ? "6" :
         ch === "s" ? "7" : "0";
       const literal = k === "6" && ch !== "x"; // letters render as themselves
       if (k === curK) cur += k === "0" ? " " : literal ? ch : "█";
@@ -164,8 +164,8 @@ export function beeHtml(motif: Motif = "bee"): { css: string; html: string } {
       ? { b: "#ffd60a", w: "#8a7516", e: "#241f00" }
       : { b: "#9aa0a6", w: "#202124", e: "#b06c3f" };
   const css = `
-  .art-wrap { display:inline-block; float:left; margin-right:24px; width:34ch; overflow:hidden; }
-  .art { font-family:'JetBrains Mono',monospace; line-height:1.05; margin:0; font-size:10px; }
+  .art-wrap { display:inline-block; float:left; margin-right:24px; width:34ch; height:11em; position:relative; overflow:hidden; }
+  .art { font-family:'JetBrains Mono',monospace; line-height:1.05; margin:0; position:absolute; top:0; left:0; font-size:10px; }
   .art .b { color:${palette.b}; } .art .w { color:${palette.w}; } .art .e { color:${palette.e}; }
   ${motif === "bee" ? `
   .art.fB { opacity:0; animation: flapB 340ms steps(1) infinite; }
