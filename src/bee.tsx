@@ -158,15 +158,23 @@ export function Art(props: { motif?: Motif }): React.ReactElement {
 // Back-compat export used by App.tsx
 export const Bee = Art;
 
-// Tiny static RTX glyph for tight corners: under 4 rows tall.
+// Tiny static RTX glyph for tight corners: 4 rows, visible on black.
 const RTX_TINY: Seg[][] = toSegments([
   "gggggggggggggg",
   "gfg gfg gfg gf",
+  "gxxxxxxxxxxxxg",
   "gggggggggggggg",
 ]);
 
+// Tiny-card palette override: shroud must read on a black terminal.
+const TINY_COLORS: Record<string, string | undefined> = {
+  ...MOTIF_COLORS.rtx3090,
+  "4": "#5f6368", // shroud lifted from near-black
+};
+
 export function ArtTiny(): React.ReactElement {
-  const colors = MOTIF_COLORS.rtx3090;
+  const colors = TINY_COLORS;
+
   return (
     <Text>
       {RTX_TINY.map((row, ri) => (
