@@ -270,7 +270,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const sortLabel = SORT_KEYS[sortIdx];
   return (
     <Box flexDirection="column">
-      <Box justifyContent="space-between">
+      <Box width="100%" justifyContent="space-between" alignItems="flex-start">
         <Box>
           <Bee />
           <Box flexDirection="column" marginLeft={1} justifyContent="center">
