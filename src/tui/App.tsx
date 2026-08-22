@@ -13,7 +13,6 @@ import { Sources } from "./Sources.tsx";
 import { LaunchView, OutputView } from "./LaunchView.tsx";
 import { StatsBar } from "./StatsBar.tsx";
 import { Benchmark, type BenchPanelState } from "./Benchmark.tsx";
-import { Bee, ArtTiny } from "../bee.tsx";
 import { runBenchmark, type BenchProgress } from "../bench/runner.ts";
 import type { AppConfig, ResolvedConfig, SessionStats } from "../types.ts";
 
@@ -270,15 +269,9 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const sortLabel = SORT_KEYS[sortIdx];
   return (
     <Box flexDirection="column">
-      <Box width="100%" justifyContent="space-between" alignItems="flex-start">
-        <Box>
-          <Bee />
-          <Box flexDirection="column" marginLeft={1} justifyContent="center">
-            <Text bold color="yellow">beellama-tui</Text>
-            <Text dimColor>{rows.length} configs · {props.appCfg.model_roots.length} sources</Text>
-          </Box>
-        </Box>
-        <ArtTiny />
+      <Box>
+        <Text bold color="yellow">beellama-tui</Text>
+        <Text dimColor> {rows.length} configs · {props.appCfg.model_roots.length} sources</Text>
       </Box>
       {parseErrors.map((e) => <Text key={e} color="red">✗ {e}</Text>)}
       <ConfigList rows={rows} selected={selected} />
