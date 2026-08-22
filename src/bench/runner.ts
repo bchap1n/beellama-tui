@@ -149,7 +149,7 @@ export async function runBenchmark(
   await mkdir(outDir, { recursive: true });
 
   const allRows: BenchResultRow[] = [];
-  const contents: { config: string; prompt: string; content: string }[] = [];
+  const contents: { config: string; prompt: string; type: string; content: string }[] = [];
   const failures: string[] = [];
 
   const baseUrl = opts.url ?? serverUrl(appCfg);
@@ -214,7 +214,7 @@ export async function runBenchmark(
               DecodeTokPerSec: decodeMs > 0 ? Number(((m.completionTokens / decodeMs) * 1000).toFixed(2)) : 0,
             };
             allRows.push(row);
-            contents.push({ config: rc.name, prompt: p.name, content: m.content });
+            contents.push({ config: rc.name, prompt: p.name, type: p.type, content: m.content });
             break;
           } catch (e) {
             attempt++;
@@ -244,17 +244,23 @@ export async function runBenchmark(
   }
 
 
-  // Quality analysis (coding set only)
-  let qaResults: (QualityResult | undefined)[] = [];
-  if (setName === "coding") {
-    qaResults = await runQualityAnalysis(
-      contents.map((c) => ({ prompt: c.prompt, content: c.content })),
-      appCfg,
-    );
-    // attach QA columns to rows in order
-    let qi = 0;
+  // Quality analysis: one graded sample per config+prompt pair, applied to
+  // every run row of that pair. Only Code/Coding prompts carry gradable output.
+  const qaIdx = new Map<string, number>();
+  const codeSamples: { prompt: string; content: string }[] = [];
+  for (const c of contents) {
+    if (c.type !== "Code" && c.type !== "Coding") continue;
+    const key = `${c.config}/${c.prompt}`;
+    if (!qaIdx.has(key)) {
+      qaIdx.set(key, codeSamples.length);
+      codeSamples.push({ prompt: c.prompt, content: c.content });
+    }
+  }
+  if (codeSamples.length > 0) {
+    const qaResults = await runQualityAnalysis(codeSamples, appCfg);
     for (const row of allRows) {
-      const q = qaResults[qi];
+      const si = qaIdx.get(`${row.Config}/${row.Prompt}`);
+      const q = si !== undefined ? qaResults[si] : undefined;
       if (q) {
         row.QASyntaxOk = q.syntaxOk;
         row.QAPSAErrors = q.psaErrors;
@@ -262,7 +268,6 @@ export async function runBenchmark(
         row.QAIdiomScore = q.idiomScore;
         row.QAGrade = q.grade;
       }
-      qi++;
     }
   }
 

@@ -161,7 +161,8 @@ export async function writeReport(
       const rs = rows.filter((r) => r.Config === c && r.Prompt === pn);
       if (rs.length === 0) return "<td class='dim'>-</td>";
       const m = median(rs.map((r) => r.TokPerSec));
-      return `<td>${m.toFixed(1)}</td>`;
+      const g = rs.find((r) => r.QAGrade)?.QAGrade;
+      return `<td>${m.toFixed(1)}${g ? `<br><span class='grade'>${esc(g)}</span>` : ""}</td>`;
     });
     tableRows += `<tr><th>${esc(pn)}</th>${cells.join("")}</tr>`;
   }
@@ -240,6 +241,7 @@ export async function writeReport(
   .analysis-text { line-height:1.5; white-space:normal; }
   summary { cursor:pointer; color:#7dff9e; margin-top:20px; }
   .head { margin-bottom:8px; }
+  .grade { color:#7dff9e; font-size:0.85em; }
   h1 { color:#7dff9e; font-weight:600; letter-spacing:1px; margin:0 0 8px 0; }
 </style></head><body>
 <h1>beellama-tui benchmark — ${esc(setName)} — ${new Date().toISOString()}</h1>

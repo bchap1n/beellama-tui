@@ -40,6 +40,7 @@ export async function runQualityAnalysis(
     );
     const text = await new Response(proc.stdout).text();
     await proc.exited;
+    let qi = 0;
     for (const line of text.split(/\r?\n/)) {
       if (!line.trim()) continue;
       let row: QaDriverLine;
@@ -48,9 +49,12 @@ export async function runQualityAnalysis(
       } catch {
         continue;
       }
-      const idx = samples.findIndex((s) => s.prompt === row.Prompt);
-      if (idx < 0) continue;
+      // Driver emits one line per sample in input order; skip its own error
+      // lines (they carry no SyntaxOk field).
       if (row.error !== undefined || row.SyntaxOk === undefined) continue;
+      const idx = qi < samples.length ? qi : -1;
+      qi++;
+      if (idx < 0) continue;
       out[idx] = {
         syntaxOk: row.SyntaxOk ?? false,
         psaErrors: row.PSAErrors ?? 0,
