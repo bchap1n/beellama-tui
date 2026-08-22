@@ -102,8 +102,8 @@ export function Bee(): React.ReactElement {
 
 export function beeHtml(): { css: string; html: string } {
   const css = `
-  .bee-wrap { position:relative; display:inline-block; float:left; margin-right:28px; height:10em; }
-  .bee { font-family:'JetBrains Mono',monospace; line-height:1.05; margin:0; position:absolute; top:0; left:0; font-size:10px; }
+  .bee-wrap { display:inline-block; float:left; margin-right:24px; width:19ch; }
+  .bee { font-family:'JetBrains Mono',monospace; line-height:1.05; margin:0; font-size:10px; }
   .bee .b { color:#ffd60a; } .bee .w { color:#8a7516; } .bee .e { color:#241f00; }
   .bee.fB { opacity:0; animation: flapB 340ms steps(1) infinite; }
   @keyframes flapB { 0%,49% { opacity:0; } 50%,100% { opacity:1; } }
