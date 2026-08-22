@@ -158,6 +158,31 @@ export function Art(props: { motif?: Motif }): React.ReactElement {
 // Back-compat export used by App.tsx
 export const Bee = Art;
 
+// Tiny static RTX glyph for tight corners: under 4 rows tall.
+const RTX_TINY: Seg[][] = toSegments([
+  "gggggggggggggg",
+  "gfg gfg gfg gf",
+  "gggggggggggggg",
+]);
+
+export function ArtTiny(): React.ReactElement {
+  const colors = MOTIF_COLORS.rtx3090;
+  return (
+    <Text>
+      {RTX_TINY.map((row, ri) => (
+        <Text key={ri}>
+          {row.map(([text, kind], si) =>
+            kind === "0" || !colors[kind]
+              ? <Text key={si}>{text}</Text>
+              : <Text key={si} color={colors[kind]}>{text}</Text>,
+          )}
+          {ri < RTX_TINY.length - 1 ? "\n" : ""}
+        </Text>
+      ))}
+    </Text>
+  );
+}
+
 export function beeHtml(motif: Motif = "bee"): { css: string; html: string } {
   const palette =
     motif === "bee"
