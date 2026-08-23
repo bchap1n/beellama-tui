@@ -170,7 +170,7 @@ export async function runBenchmark(
         continue;
       }
 
-      const healthy = await waitForHealth(baseUrl, bench.timeout_sec);
+      const healthy = await waitForHealth(baseUrl, bench.timeout_sec, shouldAbort);
       if (!healthy) {
         failures.push(`${rc.name}: health check timed out after ${bench.timeout_sec}s`);
         onProgress?.({ configIndex: ci, configCount: resolvedList.length, configName: rc.name, promptIndex: 0, promptCount: prompts.length, runIndex: 0, runCount: runs, tokPerSec: 0, phase: "failed", note: "health timeout" });

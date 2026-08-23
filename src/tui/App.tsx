@@ -125,7 +125,10 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       return;
     }
     abortBenchRef.current = false;
-    setBench((b) => ({ ...b, running: true, progress: undefined, summary: undefined }));
+    const preview = targets.length > 3
+      ? `${targets[0].name}, ${targets[1].name}, ${targets[2].name}, +${targets.length - 3} more`
+      : targets.map((t) => t.name).join(", ");
+    setBench((b) => ({ ...b, running: true, progress: undefined, summary: `starting · scope ${state.scope} · ${targets.length} config(s): ${preview}` }));
     const onProgress = (p: BenchProgress) => setBench((b) => ({ ...b, progress: p }));
     try {
       await runBenchmark(

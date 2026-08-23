@@ -51,10 +51,11 @@ export async function runQualityAnalysis(
       }
       // Driver emits one line per sample in input order; skip its own error
       // lines (they carry no SyntaxOk field).
-      if (row.error !== undefined || row.SyntaxOk === undefined) continue;
-      const idx = qi < samples.length ? qi : -1;
-      qi++;
-      if (idx < 0) continue;
+      // Advance the slot for every real sample line (success or per-sample
+      // catch); both carry Prompt. The driver's fatal not-found line does not.
+      const idx = row.Prompt !== undefined && qi < samples.length ? qi : -1;
+      qi += row.Prompt !== undefined ? 1 : 0;
+      if (idx < 0 || row.error !== undefined || row.SyntaxOk === undefined) continue;
       out[idx] = {
         syntaxOk: row.SyntaxOk ?? false,
         psaErrors: row.PSAErrors ?? 0,

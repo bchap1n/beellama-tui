@@ -101,9 +101,10 @@ export async function launchServer(resolved: ResolvedConfig, appCfg: AppConfig, 
   return running;
 }
 
-export async function waitForHealth(url: string, timeoutSec: number): Promise<boolean> {
+export async function waitForHealth(url: string, timeoutSec: number, shouldAbort?: () => boolean): Promise<boolean> {
   const deadline = Date.now() + timeoutSec * 1000;
   while (Date.now() < deadline) {
+    if (shouldAbort?.()) return false;
     try {
       const res = await fetch(`${url}/health`, { signal: AbortSignal.timeout(2000) });
       if (res.ok) return true;
