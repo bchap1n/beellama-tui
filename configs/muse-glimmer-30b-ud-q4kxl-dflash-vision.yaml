@@ -5,8 +5,8 @@ description: 65K kvarn4, mmproj on, think off, DFlash n=15
 build: beellama
 model:
   gguf: "D:/.lmstudio/models/unsloth/meta-glimmer30b-gguf/Muse-Glimmer-30B-UD-Q4_K_XL.gguf"
-  mmproj: "D:/.lmstudio/models/meta-models/mmproj-Muse-Glimmer-30B-Q4_K_M.gguf"
-draft: { gguf: "D:/.lmstudio/models/meta-models/z-labs/dflash-Muse-Glimmer-30B-Q4_K_M.gguf" }
+  mmproj: "D:/.lmstudio/models/unsloth/meta-glimmer30b-gguf/mmproj-Muse-Glimmer-30B-Q4_K_M.gguf"
+draft: { gguf: "D:/.lmstudio/models/unsloth/meta-glimmer30b-gguf/dflash-Muse-Glimmer-30B-Q4_K_M.gguf" }
 spec: { type: draft-dflash, draft_max: 15 }
 ctx_size: 65536
 batch: 256
