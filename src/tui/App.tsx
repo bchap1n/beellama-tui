@@ -78,8 +78,15 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     return [...out].sort((a, b) => dir * String(a.facets[facetKey]).localeCompare(String(b.facets[facetKey]), undefined, { numeric: true }));
   }, [configs, filterText, filters, sortIdx]);
 
+  // Latest rows/selection for input handlers: rapid keypresses otherwise act on a
+  // stale render closure and launch the wrong row (e.g. glimmer instead of qwen).
+  const viewRef = useRef({ rows, selected });
+  viewRef.current.rows = rows; // rows sync from render; selected is write-through only
+
   useEffect(() => {
-    if (selected >= rows.length) setSelected(Math.max(0, rows.length - 1));
+    const cur = Math.min(viewRef.current.selected, Math.max(0, rows.length - 1));
+    viewRef.current.selected = cur;
+    if (selected !== cur) setSelected(cur);
   }, [rows, selected]);
   const rescan = useCallback(async () => {
     setError(undefined);
@@ -127,7 +134,10 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     let targets: ResolvedConfig[];
     if (state.scope === "all") targets = configs;
     else if (state.scope === "picked") targets = configs.filter((c) => state.picked.has(c.name));
-    else if (state.scope === "selected") targets = rows[selected] ? [rows[selected]] : [];
+    else if (state.scope === "selected") {
+      const sel = viewRef.current.rows[viewRef.current.selected];
+      targets = sel ? [sel] : [];
+    }
     else targets = visibleRows;
     if (targets.length === 0) {
       setBench((b) => ({ ...b, summary: "no configs in scope" }));
@@ -157,7 +167,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     } catch (e) {
       setBench((b) => ({ ...b, running: false, summary: `failed: ${e instanceof Error ? e.message : String(e)}` }));
     }
-  }, [configs, rows, selected]);
+  }, [configs]);
 
   useInput((input, key) => {
     if (bench.running) {
@@ -208,11 +218,18 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     if (filterText.length > 0 && !key.backspace && !key.delete && input.length === 0 && !key.upArrow && !key.downArrow) {
       // typing filter text handled below
     }
-    if (key.upArrow) setSelected((n) => Math.max(0, n - 1));
-    else if (key.downArrow) setSelected((n) => Math.min(rows.length - 1, n + 1));
+    if (key.upArrow) {
+      const next = Math.max(0, viewRef.current.selected - 1);
+      viewRef.current = { ...viewRef.current, selected: next };
+      setSelected(next);
+    } else if (key.downArrow) {
+      const next = Math.min(viewRef.current.rows.length - 1, viewRef.current.selected + 1);
+      viewRef.current = { ...viewRef.current, selected: next };
+      setSelected(next);
+    }
     else if (key.backspace || key.delete) setFilterText((t) => t.slice(0, -1));
     else if (key.return) {
-      const cfg = rows[selected];
+      const cfg = viewRef.current.rows[viewRef.current.selected];
       if (cfg) void doLaunch(cfg);
     }
     else if (input === "/") setFilterText("");
@@ -225,11 +242,11 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       const cfg = configs.find((c) => c.name === lastLaunchedRef.current);
       if (cfg) void doLaunch(cfg);
     }
-    else if (input === "t") cycleThink(rows[selected]?.name ?? "");
+    else if (input === "t") cycleThink(viewRef.current.rows[viewRef.current.selected]?.name ?? "");
     else if (input === "b") setBench((b) => ({ ...b, open: !b.open }));
     else if (input === "m") setShowSources((v) => !v);
     else if (input === " ") {
-      const cfg = rows[selected];
+      const cfg = viewRef.current.rows[viewRef.current.selected];
       if (cfg) setBench((b) => {
         const picked = new Set(b.picked);
         if (picked.has(cfg.name)) picked.delete(cfg.name);
