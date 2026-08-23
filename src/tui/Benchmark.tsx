@@ -19,6 +19,11 @@ export interface BenchPanelState {
 
 const SCOPES: Scope[] = ["selected", "filtered", "all", "picked"];
 const SETS = ["standard", "coding", "longctx"] as const;
+export const SET_LABELS: Record<string, string> = {
+  standard: "PowerShell Coding",
+  coding: "PowerShell Coding (extended)",
+  longctx: "Long Context",
+};
 
 export function Benchmark(props: { state: BenchPanelState }): React.ReactElement {
   const s = props.state;
@@ -40,10 +45,9 @@ export function Benchmark(props: { state: BenchPanelState }): React.ReactElement
             ))}
           </Text>
           <Text>
-            {"  prompts "}
             {SETS.map((st, i) => (
               <Text key={st} color={s.focus === 1 && s.set === st ? "greenBright" : s.set === st ? undefined : "gray"}>
-                {s.focus === 1 && s.set === st ? "❯ " : "  "}{st}{i < SETS.length - 1 ? "  " : ""}
+                {s.focus === 1 && s.set === st ? "❯ " : "  "}{SET_LABELS[st] ?? st}{i < SETS.length - 1 ? "  ·  " : ""}
               </Text>
             ))}
           </Text>

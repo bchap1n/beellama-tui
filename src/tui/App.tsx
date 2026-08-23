@@ -12,7 +12,7 @@ import { Filters, emptyFilters, filtersActive, matchesFilters, type FacetFilters
 import { Sources } from "./Sources.tsx";
 import { LaunchView, OutputView } from "./LaunchView.tsx";
 import { StatsBar } from "./StatsBar.tsx";
-import { Benchmark, type BenchPanelState } from "./Benchmark.tsx";
+import { Benchmark, SET_LABELS, type BenchPanelState } from "./Benchmark.tsx";
 import { runBenchmark, type BenchProgress } from "../bench/runner.ts";
 import type { AppConfig, ResolvedConfig, SessionStats } from "../types.ts";
 
@@ -142,7 +142,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
         running: false,
         summary: abortBenchRef.current
           ? `aborted — partial results in ${latestBenchDir() ?? "benchmarks/"}`
-          : `done — ${targets.length} config(s), ${state.set} set`,
+          : `done — ${targets.length} config(s) · ${SET_LABELS[state.set] ?? state.set}`,
         resultDir: latestBenchDir(),
       }));
     } catch (e) {

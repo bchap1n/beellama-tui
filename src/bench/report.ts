@@ -239,14 +239,14 @@ export async function writeReport(
   .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px; margin:12px 0; }
   .card { border:1px solid var(--line); border-radius:6px; padding:10px 12px; background:var(--panel); }
   .cfg { font-size:12px; color:#e8eef2; margin-bottom:2px; }
-  .cfg .idx { display:inline-block; background:#1d2833; color:var(--acc); border-radius:3px; padding:0 5px; margin-right:7px; font-size:10px; }
-  .meta { font-size:11px; color:var(--acc2); word-break:break-all; }
+  .cfg .idx { display:inline-block; background:#1d2833; color:var(--mut); border-radius:3px; padding:0 5px; margin-right:7px; font-size:10px; }
+  .meta { font-size:11px; color:var(--txt); word-break:break-all; }
   .meta.dim2 { color:var(--mut); }
   .chips { margin:6px 0; line-height:1.9; }
   .chip { display:inline-block; border:1px solid var(--line); border-radius:3px; padding:0 6px; margin-right:4px; font-size:10px; color:var(--txt); background:#151b21; }
   .chip.hot { color:#ffd60a; border-color:#3a3320; }
   .row { display:flex; gap:14px; align-items:baseline; margin-top:6px; }
-  .row .v { font-size:17px; font-weight:600; color:var(--acc); }
+  .row .v { font-size:17px; font-weight:600; color:#e8eef2; }
   .row .k { color:var(--mut); font-size:10px; margin-right:6px; }
   .sec { color:var(--mut); text-transform:uppercase; letter-spacing:1.5px; font-size:10px; margin:22px 0 6px; }
   table { border-collapse:collapse; margin:6px 0; width:auto; }
@@ -256,20 +256,28 @@ export async function writeReport(
   tr:hover td { background:#141a20; }
   .tldr td b { color:var(--acc); }
   .tldr .winner td { background:#12200f; }
-  .grade { color:var(--acc2); font-size:10px; }
+  .grade { color:var(--mut); font-size:10px; }
   .dim { color:var(--mut); }
   .analysis-text { white-space:normal; max-width:900px; color:var(--txt); }
   summary { cursor:pointer; color:var(--mut); font-size:11px; text-transform:uppercase; letter-spacing:1px; }
   details[open] summary { margin-bottom:6px; }
+  .cols { display:flex; gap:32px; align-items:flex-start; flex-wrap:wrap; }
+  .col { min-width:340px; }
 </style></head><body>
-<h1><b>beellama-tui</b> benchmark · ${esc(setName)} set · ${esc(stamp)}</h1>
-<div class="sub">${rows.length} rows · ${configs.length} config(s) · ${runsOf(rows)} runs per prompt (median shown) · GPU RTX 3090 · host ${esc(hostName())}</div>
+<h1><b>beellama-tui</b> benchmark · ${esc(setTitle(setName))} · ${esc(stamp)}</h1>
+<div class="sub">${rows.length} rows · ${configs.length} config(s) · ${runsOf(rows)} runs per prompt (median shown) · host ${esc(hostName())}</div>
 ${tldrHtml}
 <div class="sec">configurations under test</div>
 <div class="grid">${cardsHtml}</div>
-<div class="sec">per-prompt median tok/s</div>
-<table><thead><tr><th>prompt</th>${configs.map((c) => `<th>${esc(c.name)}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table>
-${gradeHtml}${allHtml}${analysisHtml}${failHtml}
+<div class="cols">
+  <div class="col">
+    <div class="sec">per-prompt median tok/s</div>
+    <table><thead><tr><th>prompt</th>${configs.map((c) => `<th>${esc(c.name)}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table>
+  </div>
+  <div class="col">${gradeHtml}
+  </div>
+</div>
+${analysisHtml}${allHtml}${failHtml}
 </body></html>`;
 
   await writeFile(join(outDir, "results.html"), html);
@@ -278,6 +286,15 @@ ${gradeHtml}${allHtml}${analysisHtml}${failHtml}
 function ggufName(c: ResolvedConfig): string {
   const base = c.model.gguf.replaceAll("\\", "/").split("/").pop() ?? c.model.gguf;
   return base.replace(/\.gguf$/i, "");
+}
+
+function shortQ(q?: string): string {
+  return (q ?? "").replace(/^q\d+_[a-z0-9]+$/i, (m) => m.toUpperCase()).replace(/^(q8|q4|iq4|iq3)/i, "$1");
+}
+
+function shortName(p: string): string {
+  const base = p.replaceAll("\\", "/").split("/").pop() ?? p;
+  return base.replace(/\.gguf$/i, "").replace(/-?mtp/i, " mtp");
 }
 
 const CHIP_LABELS: Record<string, string> = {
@@ -294,6 +311,9 @@ function chips(c: ResolvedConfig): string {
   if (f.spec !== "none") out.push(chip("spec", f.spec));
   if (f.think) out.push(chip("mode", "think"));
   if (f.vision) out.push(chip("io", "vision"));
+  if (c.cache_k || c.cache_v) out.push(chip("kv", `${shortQ(c.cache_k)}/${shortQ(c.cache_v)}`));
+  if (c.batch || c.ubatch) out.push(chip("b", [c.batch, c.ubatch].filter(Boolean).join("/")));
+  if (c.draft?.gguf) out.push(chip("draft", shortName(c.draft.gguf)));
   if (c.ngl === "all" || c.ngl >= 999) out.push(chip("ngl", "all"));
   else if (typeof c.ngl === "number") out.push(chip("ngl", String(c.ngl)));
   if (c.flash_attn) out.push(chip("attn", "fa"));
@@ -309,6 +329,16 @@ function runsOf(rows: BenchResultRow[]): number {
   if (rows.length === 0) return 0;
   const first = rows[0];
   return rows.filter((r) => r.Config === first.Config && r.Prompt === first.Prompt).length;
+}
+
+const SET_TITLES: Record<string, string> = {
+  standard: "PowerShell Coding",
+  coding: "PowerShell Coding",
+  longctx: "Long Context",
+};
+
+function setTitle(setName: string): string {
+  return SET_TITLES[setName] ?? setName;
 }
 
 function hostName(): string {
