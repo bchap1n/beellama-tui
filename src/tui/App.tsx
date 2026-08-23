@@ -225,6 +225,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       const cfg = configs.find((c) => c.name === lastLaunchedRef.current);
       if (cfg) void doLaunch(cfg);
     }
+    else if (input === "t") cycleThink(rows[selected]?.name ?? "");
     else if (input === "b") setBench((b) => ({ ...b, open: !b.open }));
     else if (input === "m") setShowSources((v) => !v);
     else if (input === " ") {
@@ -239,6 +240,18 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     else if (input === "q") void quit();
     else if (input.length === 1 && /[a-zA-Z0-9._-]/.test(input)) setFilterText((t) => t + input);
   });
+
+  const cycleThink = (name: string): void => {
+    setConfigs((cs) =>
+      cs.map((c) => {
+        if (c.name !== name) return c;
+        if (!c.reasoning) return { ...c, reasoning: true, reasoning_effort: "low" };
+        if (c.reasoning_effort === "high") return { ...c, reasoning: false, reasoning_effort: undefined };
+        if (c.reasoning_effort === "medium") return { ...c, reasoning: true, reasoning_effort: "high" };
+        return { ...c, reasoning_effort: "medium" };
+      }),
+    );
+  };
 
   const toggleFilterAt = (_input: string): void => {
     // Simple approach: cycle through known facet values by first letter is fragile;
@@ -311,7 +324,7 @@ function helpFor(mode: { filters: boolean; benchOpen: boolean; benchRunning: boo
   if (mode.benchOpen) return "↑/↓ field · ←→ change · enter start · esc close";
   if (mode.filters) return "a-z toggle facet · c clear · esc done";
   if (mode.sources) return "esc close";
-  return `${rowCount}/${total} shown · sort ${sortLabel} · enter launch · / filter · f facets · s sort · b bench · v output · x stop · l relaunch · space pick · m sources · q quit`;
+  return `${rowCount}/${total} shown · sort ${sortLabel} · enter launch · / filter · f facets · s sort · b bench · v output · x stop · l relaunch · space pick · t think · m sources · q quit`;
 }
 
 function serverUrlOf(appCfg: AppConfig): string {

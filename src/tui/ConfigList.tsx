@@ -34,7 +34,7 @@ export function ConfigList(props: {
           String(f.ctx),
           f.provider,
           f.spec,
-          f.think ? "on" : "off",
+          !r.reasoning ? "[off]" : r.reasoning_effort === "high" ? "[high]" : r.reasoning_effort === "medium" ? "[med]" : "[low]",
           f.vision ? "y" : "-",
           f.quality ? "*" : "-",
         ];
