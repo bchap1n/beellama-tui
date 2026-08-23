@@ -4,6 +4,13 @@ import type { BenchProgress } from "../bench/runner.ts";
 
 export type Scope = "selected" | "filtered" | "all" | "picked";
 
+export const SCOPE_LABELS: Record<Scope, string> = {
+  selected: "highlighted",
+  filtered: "filtered",
+  all: "all",
+  picked: "picked",
+};
+
 export interface BenchPanelState {
   open: boolean;
   focus: 0 | 1 | 2; // 0 scope, 1 prompts, 2 runs
@@ -25,7 +32,13 @@ export const SET_LABELS: Record<string, string> = {
   longctx: "Long Context",
 };
 
-export function Benchmark(props: { state: BenchPanelState }): React.ReactElement {
+export function Benchmark(props: {
+  state: BenchPanelState;
+  selectedName?: string;
+  visibleCount: number;
+  totalCount: number;
+  filtersActive: boolean;
+}): React.ReactElement {
   const s = props.state;
   const marker = (row: number, active: boolean) => (active ? "▸" : " ");
   if (!s.open && !s.running) return <Text> </Text>;
@@ -37,13 +50,16 @@ export function Benchmark(props: { state: BenchPanelState }): React.ReactElement
       {!s.running ? (
         <>
           <Text>
-            {"  scope   "}
-            {SCOPES.map((sc, i) => (
+            {"  run     "}
+            {SCOPES.map((sc) => (
               <Text key={sc} color={s.focus === 0 && s.scope === sc ? "greenBright" : s.scope === sc ? undefined : "gray"}>
-                {s.focus === 0 && s.scope === sc ? "❯ " : "  "}{labelOf(sc, s)}{"  "}
+                {s.focus === 0 && s.scope === sc ? "❯ " : "  "}
+                {SCOPE_LABELS[sc]}{sc === "picked" ? ` (${s.picked.size})` : ""}{sc === "filtered" && props.filtersActive ? ` (${props.visibleCount})` : ""}
+                {sc === "all" ? ` (${props.totalCount})` : ""}{"  "}
               </Text>
             ))}
           </Text>
+          <Text dimColor>  ↳ {scopeExplain(s, props)}</Text>
           <Text>
             {SETS.map((st, i) => (
               <Text key={st} color={s.focus === 1 && s.set === st ? "greenBright" : s.set === st ? undefined : "gray"}>
@@ -55,8 +71,13 @@ export function Benchmark(props: { state: BenchPanelState }): React.ReactElement
             {"  runs    "}{s.focus === 2 ? "❯ " : "  "}{s.runs}
             {s.focus !== 2 && <Text dimColor>  (↑/↓ to focus, ←/→ to change)</Text>}
           </Text>
-          {s.scope === "picked" && (
-            <Text dimColor>  picked: {s.picked.size > 0 ? [...s.picked].join(", ") : "(none yet — press space on config rows)"}</Text>
+          {(s.scope === "picked" || s.scope === "selected") && (
+            <Text dimColor>
+              {"  "}
+              {s.scope === "picked"
+                ? `picked: ${s.picked.size > 0 ? [...s.picked].join(", ") : "(none yet — press space on config rows)"}`
+                : `highlighted: ${props.selectedName ?? "(none)"}`}
+            </Text>
           )}
         </>
       ) : s.progress ? (
@@ -78,7 +99,11 @@ export function Benchmark(props: { state: BenchPanelState }): React.ReactElement
   );
 }
 
-function labelOf(scope: Scope, s: BenchPanelState): string {
-  if (scope === "picked") return `picked (${s.picked.size})`;
-  return scope;
+function scopeExplain(s: BenchPanelState, p: { selectedName?: string; visibleCount: number; totalCount: number; filtersActive: boolean }): string {
+  switch (s.scope) {
+    case "selected": return p.selectedName ? `only [${p.selectedName}] — the row your cursor is on` : "nothing selected";
+    case "filtered": return p.filtersActive ? `every config matching your filter/facets (${p.visibleCount})` : `no filters set — this means every config (${p.visibleCount})`;
+    case "all": return `every loaded config (${p.totalCount})`;
+    case "picked": return s.picked.size > 0 ? `${s.picked.size} config(s) you tagged with space` : "nothing tagged yet — press space on config rows first";
+  }
 }

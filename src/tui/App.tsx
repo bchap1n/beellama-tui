@@ -329,7 +329,15 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       <StatsBar stats={stats} gpu={gpu} />
       <LaunchView server={server} error={error} />
       {showOutput && <OutputView server={server} scrollRef={outputScrollRef} />}
-      {(bench.open || bench.running) && <Benchmark state={bench} />}
+      {(bench.open || bench.running) && (
+        <Benchmark
+          state={bench}
+          selectedName={viewRef.current.rows[viewRef.current.selected]?.name}
+          visibleCount={rows.length}
+          totalCount={configs.length}
+          filtersActive={filtersActive(filters)}
+        />
+      )}
       {showFilters && <Filters rows={configs} filters={filters} />}
       {showSources && <Sources roots={props.appCfg.model_roots} rows={configs} />}
     </Box>
