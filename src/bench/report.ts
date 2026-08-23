@@ -4,6 +4,7 @@ import * as os from "node:os";
 import { join } from "node:path";
 import type { BenchResultRow, ResolvedConfig } from "../types.ts";
 import { appFile } from "../approot.ts";
+import { engineIdentity } from "../binary.ts";
 import { median } from "./runner.ts";
 
 // Byte-for-byte legacy header from run_benchmark.ps1 results.csv.
@@ -115,6 +116,7 @@ export async function writeReport(
   configs: ResolvedConfig[],
   failures: string[],
   setName: string,
+  engine?: string,
 ): Promise<void> {
   await writeFile(join(outDir, "results.csv"), rowsToCsv(rows));
 
@@ -265,7 +267,7 @@ export async function writeReport(
   .col { min-width:340px; }
 </style></head><body>
 <h1><b>beellama-tui</b> benchmark · ${esc(setTitle(setName))} · ${esc(stamp)}</h1>
-<div class="sub">${rows.length} rows · ${configs.length} config(s) · ${runsOf(rows)} runs per prompt (median shown) · host ${esc(hostName())}</div>
+<div class="sub">${rows.length} rows · ${configs.length} config(s) · ${runsOf(rows)} runs per prompt (median shown) · engine: ${esc(engine ?? enginesOf(configs))}</div>
 ${tldrHtml}
 <div class="sec">configurations under test</div>
 <div class="grid">${cardsHtml}</div>
@@ -341,11 +343,8 @@ function setTitle(setName: string): string {
   return SET_TITLES[setName] ?? setName;
 }
 
-function hostName(): string {
-  try {
-    return os.hostname().toLowerCase().split(".")[0];
-  } catch {
-    return "";
-  }
+function enginesOf(configs: ResolvedConfig[]): string {
+  const uniq = [...new Set(configs.map((c) => engineIdentity(c.build, c.binaryPath)))];
+  return uniq.join(" · ") || "unknown";
 }
 

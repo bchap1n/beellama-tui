@@ -35,3 +35,25 @@ export function resolveBinary(buildKey: string, appCfg: AppConfig): string {
 
   throw new Error(`Build '${buildKey}' not found. Tried:\n  ${tried.join("\n  ") || "(no candidates)"}`);
 }
+
+// Engine identity for reports: display name + the version/commit string the
+// binary itself reports (llama-server --version). Falls back to the build key.
+export function engineIdentity(buildKey: string, binaryPath: string, _appCfg?: AppConfig): string {
+  const NAMES: Record<string, string> = {
+    "beellama": "beellama.cpp",
+    "beellama_fork": "beellama.cpp (fork)",
+    "beellama_prebuilt": "beellama.cpp (prebuilt)",
+    "llama.cpp": "llama.cpp",
+    "ik_llama": "ik_llama.cpp",
+    "lucebox": "lucebox dflash",
+  };
+  const name = NAMES[buildKey] ?? buildKey;
+  try {
+    const v = Bun.spawnSync([binaryPath, "--version"], { stdout: "pipe", stderr: "pipe" });
+    const out = (v.stdout.toString() + " " + v.stderr.toString()).trim();
+    if (v.exitCode === 0 && out) return `${name} ${out.split(/\r?\n/)[0]}`;
+  } catch {
+    // binary would not identify itself
+  }
+  return name;
+}
