@@ -20,8 +20,8 @@ export interface BenchPanelState {
 const SCOPES: Scope[] = ["selected", "filtered", "all", "picked"];
 const SETS = ["standard", "coding", "longctx"] as const;
 export const SET_LABELS: Record<string, string> = {
-  standard: "PowerShell Coding",
-  coding: "PowerShell Coding (extended)",
+  standard: "Mixed (code + reasoning)",
+  coding: "PowerShell Coding",
   longctx: "Long Context",
 };
 

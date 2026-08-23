@@ -334,7 +334,7 @@ function runsOf(rows: BenchResultRow[]): number {
 }
 
 const SET_TITLES: Record<string, string> = {
-  standard: "PowerShell Coding",
+  standard: "Mixed (code + reasoning)",
   coding: "PowerShell Coding",
   longctx: "Long Context",
 };
