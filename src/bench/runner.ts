@@ -271,7 +271,7 @@ export async function runBenchmark(
     }
   }
 
-  await writeReport(outDir, allRows, resolvedList.map((r) => r.name), failures, setName);
+  await writeReport(outDir, allRows, resolvedList, failures, setName);
 
   if (!onProgress) {
     console.log(`results: ${join(outDir, "results.csv")}`);

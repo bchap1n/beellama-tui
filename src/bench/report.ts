@@ -1,7 +1,8 @@
 // Report generation: legacy-header CSV, single-file neon HTML, DeepSeek verdict.
 import { writeFile } from "node:fs/promises";
+import * as os from "node:os";
 import { join } from "node:path";
-import type { BenchResultRow } from "../types.ts";
+import type { BenchResultRow, ResolvedConfig } from "../types.ts";
 import { appFile } from "../approot.ts";
 import { median } from "./runner.ts";
 
@@ -111,13 +112,12 @@ function esc(s: string): string {
 export async function writeReport(
   outDir: string,
   rows: BenchResultRow[],
-  configs: string[],
+  configs: ResolvedConfig[],
   failures: string[],
   setName: string,
 ): Promise<void> {
   await writeFile(join(outDir, "results.csv"), rowsToCsv(rows));
 
-  // Per-config summary cards
   const byConfig = new Map<string, BenchResultRow[]>();
   for (const r of rows) {
     const list = byConfig.get(r.Config) ?? [];
@@ -127,44 +127,49 @@ export async function writeReport(
 
   // TLDR: deterministic per-config scores, stable across runs.
   const tldrRows = configs
-    .map((c) => ({ cfg: c, tok: median((byConfig.get(c) ?? []).map((r) => r.TokPerSec)), s: tldrScore(byConfig.get(c) ?? []) }))
+    .map((c) => ({ cfg: c.name, tok: median((byConfig.get(c.name) ?? []).map((r) => r.TokPerSec)), s: tldrScore(byConfig.get(c.name) ?? []) }))
     .filter((e) => e.s !== undefined);
   let tldrHtml = "";
   if (tldrRows.length > 0) {
     const ranked = [...tldrRows].sort((a, b) => b.s!.score - a.s!.score);
     const winner = ranked[0];
-    tldrHtml = "<div class='section'>TLDR — deterministic score (fixed rubric, no LLM)</div><table class='tldr'>" +
-      "<tr><th>config</th><th>score</th><th>grade mode</th><th>PSA err/warn avg</th><th>tok/s</th></tr>" +
+    tldrHtml = "<div class='sec'>TLDR · deterministic score</div><table class='tldr'>" +
+      "<tr><th>config</th><th>score</th><th>grade</th><th>psa e/w</th><th>tok/s</th></tr>" +
       ranked.map((e) =>
-        `<tr${e.cfg === winner.cfg ? " class='winner'" : ""}><th>${esc(e.cfg)}</th><td><b>${e.s!.score.toFixed(1)}</b>/10</td><td>${esc(e.s!.gradeMode)}</td><td>${e.s!.avgPsaE}/${e.s!.avgPsaW}</td><td>${e.tok.toFixed(1)}</td></tr>`,
+        `<tr${e.cfg === winner.cfg ? " class='winner'" : ""}><td>${esc(e.cfg)}</td><td><b>${e.s!.score.toFixed(1)}</b></td><td>${esc(e.s!.gradeMode)}</td><td>${e.s!.avgPsaE}/${e.s!.avgPsaW}</td><td>${e.tok.toFixed(1)}</td></tr>`,
       ).join("") +
       "</table>";
   }
+
+  // Per-config stat cards with full identity.
   let cardsHtml = "";
-  for (const cfg of configs) {
-    const list = byConfig.get(cfg) ?? [];
-    if (list.length === 0) continue;
+  configs.forEach((cfg, i) => {
+    const list = byConfig.get(cfg.name) ?? [];
+    if (list.length === 0) return;
     const tok = median(list.map((r) => r.TokPerSec));
     const dec = median(list.map((r) => r.DecodeTokPerSec));
     const ttft = median(list.map((r) => r.TTFT_Ms));
-    cardsHtml += `<div class="card"><div class="cfg">${esc(cfg)}</div>
-      <div class="stat"><span class="v">${tok.toFixed(1)}</span><span class="k">tok/s</span></div>
-      <div class="stat"><span class="v">${dec.toFixed(1)}</span><span class="k">decode</span></div>
-      <div class="stat"><span class="v">${ttft.toFixed(0)}</span><span class="k">ttft ms</span></div></div>`;
-  }
+    const f = cfg.facets;
+    cardsHtml += `<div class="card"><div class="cfg"><span class="idx">${i + 1}</span>${esc(cfg.name)}</div>
+      <div class="meta">${esc(f.model)} · <b>${esc(ggufName(cfg))}</b></div>
+      <div class="meta dim2">${esc(cfg.file)}</div>
+      <div class="chips">${chips(cfg)}</div>
+      <div class="row"><span class="v">${tok.toFixed(1)}</span><span class="k">tok/s</span><span class="v">${dec.toFixed(1)}</span><span class="k">decode</span><span class="v">${ttft.toFixed(0)}</span><span class="k">ttft</span></div>
+      </div>`;
+  });
 
   // Per-prompt comparison table
   const promptNames = [...new Set(rows.map((r) => r.Prompt))];
   let tableRows = "";
   for (const pn of promptNames) {
     const cells = configs.map((c) => {
-      const rs = rows.filter((r) => r.Config === c && r.Prompt === pn);
+      const rs = rows.filter((r) => r.Config === c.name && r.Prompt === pn);
       if (rs.length === 0) return "<td class='dim'>-</td>";
       const m = median(rs.map((r) => r.TokPerSec));
       const g = rs.find((r) => r.QAGrade)?.QAGrade;
-      return `<td>${m.toFixed(1)}${g ? `<br><span class='grade'>${esc(g)}</span>` : ""}</td>`;
+      return `<td>${m.toFixed(1)}${g ? ` <span class='grade'>${esc(g)}</span>` : ""}</td>`;
     });
-    tableRows += `<tr><th>${esc(pn)}</th>${cells.join("")}</tr>`;
+    tableRows += `<tr><td>${esc(pn)}</td>${cells.join("")}</tr>`;
   }
 
   // Grade distribution (quality mode)
@@ -172,11 +177,11 @@ export async function writeReport(
   const graded = rows.filter((r) => r.QAGrade);
   if (graded.length > 0) {
     const grades = ["A", "B+", "B", "C", "D", "F"];
-    gradeHtml = "<div class='section'>grade distribution</div><table><tr><th>config</th>" +
+    gradeHtml = "<div class='sec'>grade distribution</div><table><tr><th>config</th>" +
       grades.map((g) => `<th>${g}</th>`).join("") + "</tr>";
     for (const cfg of configs) {
-      const counts = grades.map((g) => graded.filter((r) => r.Config === cfg && r.QAGrade === g).length);
-      gradeHtml += `<tr><th>${esc(cfg)}</th>` + counts.map((n) => `<td>${n || "-"}</td>`).join("") + "</tr>";
+      const counts = grades.map((g) => graded.filter((r) => r.Config === cfg.name && r.QAGrade === g).length);
+      gradeHtml += `<tr><td>${esc(cfg.name)}</td>` + counts.map((n) => `<td>${n || "-"}</td>`).join("") + "</tr>";
     }
     gradeHtml += "</table>";
   }
@@ -195,12 +200,12 @@ export async function writeReport(
   let analysisHtml = "";
   const dataLines: string[] = [];
   for (const cfg of configs) {
-    const list = byConfig.get(cfg) ?? [];
+    const list = byConfig.get(cfg.name) ?? [];
     if (list.length === 0) continue;
     const tok = median(list.map((r) => r.TokPerSec));
     const ttft = median(list.map((r) => r.TTFT_Ms));
-    const s = tldrRows.find((e) => e.cfg === cfg)?.s;
-    dataLines.push(`CONFIG: ${cfg} | TLDR score ${s ? s.score.toFixed(1) + "/10" : "n/a"} grade mode ${s?.gradeMode ?? "-"} | ${tok.toFixed(1)} tok/s median TTFT ${ttft.toFixed(0)}ms | PSA err/warn avg ${s ? `${s.avgPsaE}/${s.avgPsaW}` : "n/a"}`);
+    const s = tldrRows.find((e) => e.cfg === cfg.name)?.s;
+    dataLines.push(`CONFIG: ${cfg.name} (${ggufName(cfg)}, ctx ${cfg.facets.ctx}) | TLDR score ${s ? s.score.toFixed(1) + "/10" : "n/a"} grade mode ${s?.gradeMode ?? "-"} | ${tok.toFixed(1)} tok/s median TTFT ${ttft.toFixed(0)}ms | PSA err/warn avg ${s ? `${s.avgPsaE}/${s.avgPsaW}` : "n/a"}`);
     for (const pn of promptNames) {
       const rs = list.filter((r) => r.Prompt === pn);
       if (rs.length === 0) continue;
@@ -211,46 +216,106 @@ export async function writeReport(
   }
   const verdict = await deepSeekVerdict(dataLines.join("\n"), configs.length, appFile("prompts"));
   if (verdict) {
-    analysisHtml = `<div class='section'>deepseek analysis // deepseek-v4-flash</div><div class='analysis-text'>${esc(verdict).replace(/\n/g, "<br>")}</div>`;
+    analysisHtml = `<div class='sec'>analysis · deepseek-v4-flash</div><div class='analysis-text'>${esc(verdict).replace(/\n/g, "<br>")}</div>`;
   } else if (setName === "coding") {
-    analysisHtml = "<div class='section'>deepseek analysis</div><p class='dim'>Skipped: DEEPSEEK_API_KEY not set.</p>";
+    analysisHtml = "<div class='sec'>analysis</div><p class='dim'>Skipped: DEEPSEEK_API_KEY not set.</p>";
   }
 
   const failHtml = failures.length > 0
-    ? `<div class='section'>failures</div><pre class='dim'>${esc(failures.join("\n"))}</pre>`
+    ? `<div class='sec'>failures</div><pre class='dim'>${esc(failures.join("\n"))}</pre>`
     : "";
 
+  const when = new Date();
+  const stamp = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, "0")}-${String(when.getDate()).padStart(2, "0")} ${String(when.getHours()).padStart(2, "0")}:${String(when.getMinutes()).padStart(2, "0")}`;
   const html = `<!DOCTYPE html>
-<html><head><meta charset="utf-8"><title>beellama-tui benchmark</title>
+<html><head><meta charset="utf-8"><title>beellama-tui benchmark — ${esc(setName)}</title>
 <style>
-  body { background:#0a0f0a; color:#39ff6a; font-family:'JetBrains Mono',monospace; margin:24px; }
-  h1 { color:#7dff9e; font-weight:600; letter-spacing:1px; }
-  .cards { display:flex; gap:16px; flex-wrap:wrap; margin:16px 0; }
-  .card { border:1px solid #1e5c31; padding:12px 18px; min-width:180px; background:#0d140d; }
-  .cfg { color:#a0ffa8; margin-bottom:8px; font-size:13px; }
-  .stat { display:flex; justify-content:space-between; gap:12px; }
-  .stat .v { font-size:20px; color:#39ff6a; }
-  .stat .k { color:#3f7a4e; font-size:11px; align-self:center; }
-  table { border-collapse:collapse; margin:12px 0; }
-  th, td { border:1px solid #1e5c31; padding:4px 10px; text-align:right; font-size:13px; }
-  th:first-child, td:first-child { text-align:left; }
-  .tldr td b { color:#7dff9e; font-size:15px; }
-  .tldr .winner th, .tldr .winner td { background:#12240f; }
-  .section { color:#7dff9e; margin-top:28px; border-bottom:1px solid #1e5c31; padding-bottom:4px; }
-  .dim { color:#3f7a4e; }
-  .analysis-text { line-height:1.5; white-space:normal; }
-  summary { cursor:pointer; color:#7dff9e; margin-top:20px; }
-  .head { margin-bottom:8px; }
-  .grade { color:#7dff9e; font-size:0.85em; }
-  h1 { color:#7dff9e; font-weight:600; letter-spacing:1px; margin:0 0 8px 0; }
+  :root { --bg:#0b0d10; --panel:#11151a; --line:#1c232b; --txt:#c9d4dc; --mut:#5c6a76; --acc:#39ff6a; --acc2:#7dff9e; }
+  * { box-sizing:border-box; }
+  body { background:var(--bg); color:var(--txt); font:13px/1.45 'JetBrains Mono','Cascadia Code',Consolas,monospace; margin:20px auto; max-width:1280px; }
+  h1 { font-size:15px; font-weight:600; margin:0 0 2px; letter-spacing:.3px; }
+  h1 b { color:var(--acc); }
+  .sub { color:var(--mut); font-size:11px; margin-bottom:14px; }
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(300px,1fr)); gap:10px; margin:12px 0; }
+  .card { border:1px solid var(--line); border-radius:6px; padding:10px 12px; background:var(--panel); }
+  .cfg { font-size:12px; color:#e8eef2; margin-bottom:2px; }
+  .cfg .idx { display:inline-block; background:#1d2833; color:var(--acc); border-radius:3px; padding:0 5px; margin-right:7px; font-size:10px; }
+  .meta { font-size:11px; color:var(--acc2); word-break:break-all; }
+  .meta.dim2 { color:var(--mut); }
+  .chips { margin:6px 0; line-height:1.9; }
+  .chip { display:inline-block; border:1px solid var(--line); border-radius:3px; padding:0 6px; margin-right:4px; font-size:10px; color:var(--txt); background:#151b21; }
+  .chip.hot { color:#ffd60a; border-color:#3a3320; }
+  .row { display:flex; gap:14px; align-items:baseline; margin-top:6px; }
+  .row .v { font-size:17px; font-weight:600; color:var(--acc); }
+  .row .k { color:var(--mut); font-size:10px; margin-right:6px; }
+  .sec { color:var(--mut); text-transform:uppercase; letter-spacing:1.5px; font-size:10px; margin:22px 0 6px; }
+  table { border-collapse:collapse; margin:6px 0; width:auto; }
+  th,td { padding:3px 10px; text-align:right; font-size:12px; border-bottom:1px solid var(--line); }
+  th:first-child, td:first-child { text-align:left; color:#e8eef2; }
+  thead th { color:var(--mut); font-weight:500; font-size:10px; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid #2a343e; }
+  tr:hover td { background:#141a20; }
+  .tldr td b { color:var(--acc); }
+  .tldr .winner td { background:#12200f; }
+  .grade { color:var(--acc2); font-size:10px; }
+  .dim { color:var(--mut); }
+  .analysis-text { white-space:normal; max-width:900px; color:var(--txt); }
+  summary { cursor:pointer; color:var(--mut); font-size:11px; text-transform:uppercase; letter-spacing:1px; }
+  details[open] summary { margin-bottom:6px; }
 </style></head><body>
-<h1>beellama-tui benchmark — ${esc(setName)} — ${new Date().toISOString()}</h1>
+<h1><b>beellama-tui</b> benchmark · ${esc(setName)} set · ${esc(stamp)}</h1>
+<div class="sub">${rows.length} rows · ${configs.length} config(s) · ${runsOf(rows)} runs per prompt (median shown) · GPU RTX 3090 · host ${esc(hostName())}</div>
 ${tldrHtml}
-<div class="cards">${cardsHtml}</div>
-<div class="section">per-prompt median tok/s</div>
-<table><tr><th>prompt</th>${configs.map((c) => `<th>${esc(c)}</th>`).join("")}</tr>${tableRows}</table>
+<div class="sec">configurations under test</div>
+<div class="grid">${cardsHtml}</div>
+<div class="sec">per-prompt median tok/s</div>
+<table><thead><tr><th>prompt</th>${configs.map((c) => `<th>${esc(c.name)}</th>`).join("")}</tr></thead><tbody>${tableRows}</tbody></table>
 ${gradeHtml}${allHtml}${analysisHtml}${failHtml}
 </body></html>`;
 
   await writeFile(join(outDir, "results.html"), html);
 }
+
+function ggufName(c: ResolvedConfig): string {
+  const base = c.model.gguf.replaceAll("\\", "/").split("/").pop() ?? c.model.gguf;
+  return base.replace(/\.gguf$/i, "");
+}
+
+const CHIP_LABELS: Record<string, string> = {
+  provider: "lab", quant: "quant", ctx: "ctx", spec: "spec",
+};
+
+function chips(c: ResolvedConfig): string {
+  const f = c.facets;
+  const out: string[] = [
+    chip("lab", f.provider),
+    chip("quant", f.quant),
+    chip("ctx", String(f.ctx)),
+  ];
+  if (f.spec !== "none") out.push(chip("spec", f.spec));
+  if (f.think) out.push(chip("mode", "think"));
+  if (f.vision) out.push(chip("io", "vision"));
+  if (c.ngl === "all" || c.ngl >= 999) out.push(chip("ngl", "all"));
+  else if (typeof c.ngl === "number") out.push(chip("ngl", String(c.ngl)));
+  if (c.flash_attn) out.push(chip("attn", "fa"));
+  void CHIP_LABELS;
+  return out.join("");
+}
+
+function chip(k: string, v: string): string {
+  return `<span class="chip${k === "quant" ? " hot" : ""}">${k}·${v}</span>`;
+}
+
+function runsOf(rows: BenchResultRow[]): number {
+  if (rows.length === 0) return 0;
+  const first = rows[0];
+  return rows.filter((r) => r.Config === first.Config && r.Prompt === first.Prompt).length;
+}
+
+function hostName(): string {
+  try {
+    return os.hostname().toLowerCase().split(".")[0];
+  } catch {
+    return "";
+  }
+}
+
