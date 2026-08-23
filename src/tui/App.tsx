@@ -12,6 +12,7 @@ import { Filters, emptyFilters, filtersActive, matchesFilters, type FacetFilters
 import { Sources } from "./Sources.tsx";
 import { LaunchView, OutputView } from "./LaunchView.tsx";
 import { StatsBar } from "./StatsBar.tsx";
+import { probeGpu, type GpuStats } from "./gpu.ts";
 import { Benchmark, SET_LABELS, type BenchPanelState } from "./Benchmark.tsx";
 import { runBenchmark, type BenchProgress } from "../bench/runner.ts";
 import type { AppConfig, ResolvedConfig, SessionStats } from "../types.ts";
@@ -33,6 +34,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const [server, setServer] = useState(() => getRunningServer());
   const [error, setError] = useState<string | undefined>(undefined);
   const [stats, setStats] = useState<SessionStats | undefined>(undefined);
+  const [gpu, setGpu] = useState<GpuStats | undefined>(undefined);
   const [bench, setBench] = useState<BenchPanelState>({
     open: false, focus: 0,
     scope: "selected", picked: new Set(), set: "standard", runs: props.appCfg.benchmark.runs,
@@ -49,6 +51,13 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       setServer(getRunningServer());
       setStats(trackerRef.current?.stats);
     }, 500);
+    return () => clearInterval(t);
+  }, []);
+
+  // GPU stats refresh (nvidia-smi spawn ~100ms; slower cadence than server poll)
+  useEffect(() => {
+    setGpu(probeGpu());
+    const t = setInterval(() => setGpu(probeGpu()), 2000);
     return () => clearInterval(t);
   }, []);
 
@@ -280,9 +289,14 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       <ConfigList rows={rows} selected={selected} />
       {filterText && <Text>filter: /{filterText}_</Text>}
       <Text dimColor>
-        {rows.length}/{configs.length} shown · sort {sortLabel} · up/down select · enter launch · / filter · f facets · s sort · b bench · v output · x stop · l relaunch · space pick · m sources · q quit
+        {helpFor(
+          { filters: showFilters, benchOpen: bench.open, benchRunning: bench.running, sources: showSources },
+          rows.length,
+          configs.length,
+          sortLabel,
+        )}
       </Text>
-      <StatsBar stats={stats} />
+      <StatsBar stats={stats} gpu={gpu} />
       <LaunchView server={server} error={error} />
       {showOutput && <OutputView server={server} scrollRef={outputScrollRef} />}
       {(bench.open || bench.running) && <Benchmark state={bench} />}
@@ -290,6 +304,14 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       {showSources && <Sources roots={props.appCfg.model_roots} rows={configs} />}
     </Box>
   );
+}
+
+function helpFor(mode: { filters: boolean; benchOpen: boolean; benchRunning: boolean; sources: boolean }, rowCount: number, total: number, sortLabel: string): string {
+  if (mode.benchRunning) return "esc abort · v output · o open last report";
+  if (mode.benchOpen) return "↑/↓ field · ←→ change · enter start · esc close";
+  if (mode.filters) return "a-z toggle facet · c clear · esc done";
+  if (mode.sources) return "esc close";
+  return `${rowCount}/${total} shown · sort ${sortLabel} · enter launch · / filter · f facets · s sort · b bench · v output · x stop · l relaunch · space pick · m sources · q quit`;
 }
 
 function serverUrlOf(appCfg: AppConfig): string {
