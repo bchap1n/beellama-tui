@@ -130,15 +130,18 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     setStats(undefined);
   }, []);
 
-  const startBench = useCallback(async (state: BenchPanelState, visibleRows: ResolvedConfig[]) => {
-    let targets: ResolvedConfig[];
-    if (state.scope === "all") targets = configs;
-    else if (state.scope === "picked") targets = configs.filter((c) => state.picked.has(c.name));
-    else if (state.scope === "selected") {
+  const targetsFor = (state: BenchPanelState): ResolvedConfig[] => {
+    if (state.scope === "all") return configs;
+    if (state.scope === "picked") return configs.filter((c) => state.picked.has(c.name));
+    if (state.scope === "selected") {
       const sel = viewRef.current.rows[viewRef.current.selected];
-      targets = sel ? [sel] : [];
+      return sel ? [sel] : [];
     }
-    else targets = visibleRows;
+    return viewRef.current.rows;
+  };
+
+  const startBench = useCallback(async (state: BenchPanelState) => {
+    const targets = targetsFor(state);
     if (targets.length === 0) {
       setBench((b) => ({ ...b, summary: "no configs in scope" }));
       return;
@@ -208,7 +211,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
           return { ...b, runs: Math.max(1, Math.min(5, b.runs + dir)) };
         });
       }
-      else if (key.return) void startBench(bench, rows);
+      else if (key.return) void startBench(bench);
       else if (input === "o" && bench.resultDir) {
         void Bun.spawn(["cmd", "/c", "start", "", `${bench.resultDir}/results.html`]).exited;
       }
@@ -332,6 +335,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       {(bench.open || bench.running) && (
         <Benchmark
           state={bench}
+          targets={targetsFor(bench).map((t) => t.name)}
           selectedName={viewRef.current.rows[viewRef.current.selected]?.name}
           visibleCount={rows.length}
           totalCount={configs.length}

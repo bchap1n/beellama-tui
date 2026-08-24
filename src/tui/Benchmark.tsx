@@ -34,6 +34,7 @@ export const SET_LABELS: Record<string, string> = {
 
 export function Benchmark(props: {
   state: BenchPanelState;
+  targets: string[];
   selectedName?: string;
   visibleCount: number;
   totalCount: number;
@@ -71,14 +72,12 @@ export function Benchmark(props: {
             {"  runs    "}{s.focus === 2 ? "❯ " : "  "}{s.runs}
             {s.focus !== 2 && <Text dimColor>  (↑/↓ to focus, ←/→ to change)</Text>}
           </Text>
-          {(s.scope === "picked" || s.scope === "selected") && (
-            <Text dimColor>
-              {"  "}
-              {s.scope === "picked"
-                ? `picked: ${s.picked.size > 0 ? [...s.picked].join(", ") : "(none yet — press space on config rows)"}`
-                : `highlighted: ${props.selectedName ?? "(none)"}`}
-            </Text>
-          )}
+          <Text dimColor>
+            {"  will run: "}
+            {props.targets.length > 0
+              ? (props.targets.length > 4 ? `${props.targets.slice(0, 3).join(", ")} +${props.targets.length - 3} more` : props.targets.join(", "))
+              : "(nothing — change the run row)"}
+          </Text>
         </>
       ) : s.progress ? (
         <>
