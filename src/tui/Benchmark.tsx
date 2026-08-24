@@ -51,7 +51,7 @@ export function Benchmark(props: {
       {!s.running ? (
         <>
           <Text>
-            {"  run     "}
+            {"  which configs?  "}
             {SCOPES.map((sc) => (
               <Text key={sc} color={s.focus === 0 && s.scope === sc ? "greenBright" : s.scope === sc ? undefined : "gray"}>
                 {s.focus === 0 && s.scope === sc ? "❯ " : "  "}
@@ -61,7 +61,9 @@ export function Benchmark(props: {
             ))}
           </Text>
           <Text dimColor>  ↳ {scopeExplain(s, props)}</Text>
+          <Text dimColor>  ↳ which prompt set to run against the configs above</Text>
           <Text>
+            {"  prompts:       "}
             {SETS.map((st, i) => (
               <Text key={st} color={s.focus === 1 && s.set === st ? "greenBright" : s.set === st ? undefined : "gray"}>
                 {s.focus === 1 && s.set === st ? "❯ " : "  "}{SET_LABELS[st] ?? st}{i < SETS.length - 1 ? "  ·  " : ""}
@@ -69,14 +71,14 @@ export function Benchmark(props: {
             ))}
           </Text>
           <Text color={s.focus === 2 ? "greenBright" : undefined}>
-            {"  runs    "}{s.focus === 2 ? "❯ " : "  "}{s.runs}
+            {"  runs per config "}{s.focus === 2 ? "❯ " : "  "}{s.runs}
             {s.focus !== 2 && <Text dimColor>  (↑/↓ to focus, ←/→ to change)</Text>}
           </Text>
           <Text dimColor>
             {"  will run: "}
             {props.targets.length > 0
               ? (props.targets.length > 4 ? `${props.targets.slice(0, 3).join(", ")} +${props.targets.length - 3} more` : props.targets.join(", "))
-              : "(nothing — change the run row)"}
+              : "(nothing — change which configs?)"}
           </Text>
         </>
       ) : s.progress ? (

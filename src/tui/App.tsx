@@ -27,6 +27,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const [parseErrors, setParseErrors] = useState<string[]>(props.errors);
   const [filterText, setFilterText] = useState("");
   const [filters, setFilters] = useState<FacetFilters>(emptyFilters);
+  const [filterCursor, setFilterCursor] = useState(0);
   const [sortIdx, setSortIdx] = useState(0);
   const [showOutput, setShowOutput] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
@@ -186,8 +187,17 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
 
     if (showFilters) {
       if (key.escape || key.return) { setShowFilters(false); return; }
-      if (input === "c") { setFilters(emptyFilters()); return; }
-      toggleFilterAt(input);
+      const vals = flatFilterValues();
+      if (input === "c") { setFilters(emptyFilters()); setFilterCursor(0); return; }
+      if (key.leftArrow) { setFilterCursor((n) => Math.max(0, n - 1)); return; }
+      if (key.rightArrow) { setFilterCursor((n) => Math.min(vals.length - 1, n + 1)); return; }
+      if (key.upArrow) { setFilterCursor((n) => Math.max(0, n - 6)); return; }
+      if (key.downArrow) { setFilterCursor((n) => Math.min(vals.length - 1, n + 6)); return; }
+      if (input === " ") {
+        const cur = vals[filterCursor];
+        if (cur) toggleFilterValue(cur.facet, cur.value);
+        return;
+      }
       return;
     }
 
@@ -276,22 +286,25 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     );
   };
 
-  const toggleFilterAt = (_input: string): void => {
-    // Simple approach: cycle through known facet values by first letter is fragile;
-    // instead space toggles the value under the cursor position is complex in Ink.
-    // Keep it simple: number keys 1-9 toggle provider entries, letters for others.
+  const toggleFilterValue = (facet: keyof FacetFilters, value: string): void => {
     setFilters((f) => {
-      const providers = [...new Set(configs.map((r) => r.facets.provider))].sort();
-      const idx = Number(_input);
-      if (!Number.isNaN(idx) && idx >= 1 && idx <= providers.length) {
-        const p = providers[idx - 1];
-        const next = new Set(f.provider);
-        if (next.has(p)) next.delete(p);
-        else next.add(p);
-        return { ...f, provider: next };
-      }
-      return f;
+      const next = new Set(f[facet]);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return { ...f, [facet]: next };
     });
+  };
+
+  const flatFilterValues = (): { facet: keyof FacetFilters; value: string }[] => {
+    const providers = [...new Set(configs.map((r) => r.facets.provider))].sort();
+    const specs = [...new Set(configs.map((r) => r.facets.spec))].sort();
+    return [
+      ...providers.map((v) => ({ facet: "provider" as const, value: v })),
+      ...["on", "off"].map((v) => ({ facet: "think" as const, value: v })),
+      ...["on", "off"].map((v) => ({ facet: "vision" as const, value: v })),
+      ...["yes", "no"].map((v) => ({ facet: "quality" as const, value: v })),
+      ...specs.map((v) => ({ facet: "spec" as const, value: v })),
+    ];
   };
 
   const quit = useCallback(async () => {
@@ -345,7 +358,15 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
           filtersActive={filtersActive(filters)}
         />
       )}
-      {showFilters && <Filters rows={configs} filters={filters} />}
+      {showFilters && (
+        <Filters
+          rows={configs}
+          filters={filters}
+          cursor={filterCursor}
+          onToggle={toggleFilterValue}
+          onClear={() => setFilters(emptyFilters())}
+        />
+      )}
       {showSources && <Sources roots={props.appCfg.model_roots} rows={configs} />}
     </Box>
   );

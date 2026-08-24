@@ -30,22 +30,42 @@ export function matchesFilters(r: ResolvedConfig, f: FacetFilters): boolean {
 export function Filters(props: {
   rows: ResolvedConfig[];
   filters: FacetFilters;
+  cursor: number;
+  onToggle: (facet: keyof FacetFilters, value: string) => void;
+  onClear: () => void;
 }): React.ReactElement {
   const providers = [...new Set(props.rows.map((r) => r.facets.provider))].sort();
   const specs = [...new Set(props.rows.map((r) => r.facets.spec))].sort();
-  const toggle = (facet: keyof FacetFilters, value: string, on: boolean) => (
-    <Text key={facet + value} color={on ? "greenBright" : "gray"}>
-      {on ? "[x] " : "[ ] "}{value}{"  "}
-    </Text>
-  );
+  const groups: { facet: keyof FacetFilters; label: string; values: string[] }[] = [
+    { facet: "provider", label: "provider", values: providers },
+    { facet: "think", label: "think   ", values: ["on", "off"] },
+    { facet: "vision", label: "vision  ", values: ["on", "off"] },
+    { facet: "quality", label: "quality ", values: ["yes", "no"] },
+    { facet: "spec", label: "spec    ", values: specs },
+  ];
+  let flat = 0;
   return (
     <Box flexDirection="column" borderStyle="round" borderColor="green" paddingX={1}>
-      <Text bold color="green">filters — space toggles under cursor, enter/esc close, c clear all</Text>
-      <Box marginTop={1}><Text>provider: </Text>{providers.map((p) => toggle("provider", p, props.filters.provider.has(p)))}</Box>
-      <Box><Text>think:    </Text>{["on", "off"].map((v) => toggle("think", v, props.filters.think.has(v)))}</Box>
-      <Box><Text>vision:   </Text>{["on", "off"].map((v) => toggle("vision", v, props.filters.vision.has(v)))}</Box>
-      <Box><Text>quality:  </Text>{["yes", "no"].map((v) => toggle("quality", v, props.filters.quality.has(v)))}</Box>
-      <Box><Text>spec:     </Text>{specs.map((s) => toggle("spec", s, props.filters.spec.has(s)))}</Box>
+      <Text bold color="green">filters — ←/→ move · space toggle · c clear · esc done</Text>
+      {groups.map((g) => (
+        <Box key={g.facet} marginTop={g.facet === "provider" ? 1 : 0}>
+          <Text>{g.label}: </Text>
+          {g.values.map((v) => {
+            const idx = flat++;
+            const on = props.filters[g.facet].has(v);
+            const cur = idx === props.cursor;
+            return (
+              <Text
+                key={g.facet + v}
+                color={cur ? "blackBright" : on ? "greenBright" : "gray"}
+                backgroundColor={cur ? "#1e5c31" : undefined}
+              >
+                {cur ? "❯ " : "  "}{on ? "[x]" : "[ ]"} {v}{"  "}
+              </Text>
+            );
+          })}
+        </Box>
+      ))}
     </Box>
   );
 }
