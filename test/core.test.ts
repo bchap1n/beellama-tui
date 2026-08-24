@@ -123,7 +123,7 @@ describe("facets", () => {
 describe("CSV header parity", () => {
   test("byte-for-byte legacy header", () => {
     expect(CSV_HEADER).toBe(
-      "Config,Label,Run,Prompt,Type,PromptTokens,CompletionTokens,WallTimeMs,TTFT_Ms,TokPerSec,DecodeTokPerSec,QASyntaxOk,QAPSAErrors,QAPSAWarnings,QAIdiomScore,QAGrade",
+      "Config,Label,Run,Prompt,Type,PromptTokens,CompletionTokens,WallTimeMs,TTFT_Ms,TokPerSec,DecodeTokPerSec,NeedleHit,QASyntaxOk,QAPSAErrors,QAPSAWarnings,QAIdiomScore,QAGrade",
     );
   });
   test("rows render with empty QA columns when absent", () => {
@@ -132,7 +132,7 @@ describe("CSV header parity", () => {
       PromptTokens: 10, CompletionTokens: 20, WallTimeMs: 1000, TTFT_Ms: 50,
       TokPerSec: 20, DecodeTokPerSec: 21,
     }]);
-    expect(csv.split("\n")[1]).toBe("c,l,1,p,Code,10,20,1000,50,20,21,,,,,");
+    expect(csv.split("\n")[1]).toBe("c,l,1,p,Code,10,20,1000,50,20,21,,,,,,");
   });
 });
 

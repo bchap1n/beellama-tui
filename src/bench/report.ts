@@ -9,7 +9,7 @@ import { median } from "./runner.ts";
 
 // Byte-for-byte legacy header from run_benchmark.ps1 results.csv.
 export const CSV_HEADER =
-  "Config,Label,Run,Prompt,Type,PromptTokens,CompletionTokens,WallTimeMs,TTFT_Ms,TokPerSec,DecodeTokPerSec,QASyntaxOk,QAPSAErrors,QAPSAWarnings,QAIdiomScore,QAGrade";
+  "Config,Label,Run,Prompt,Type,PromptTokens,CompletionTokens,WallTimeMs,TTFT_Ms,TokPerSec,DecodeTokPerSec,NeedleHit,QASyntaxOk,QAPSAErrors,QAPSAWarnings,QAIdiomScore,QAGrade";
 
 function csvEscape(v: string | number | boolean | undefined): string {
   if (v === undefined) return "";
@@ -24,7 +24,7 @@ export function rowsToCsv(rows: BenchResultRow[]): string {
       [
         r.Config, r.Label, r.Run, r.Prompt, r.Type,
         r.PromptTokens, r.CompletionTokens, r.WallTimeMs, r.TTFT_Ms,
-        r.TokPerSec, r.DecodeTokPerSec,
+        r.TokPerSec, r.DecodeTokPerSec, r.NeedleHit ?? "",
         r.QASyntaxOk ?? "", r.QAPSAErrors ?? "", r.QAPSAWarnings ?? "",
         r.QAIdiomScore ?? "", r.QAGrade ?? "",
       ].map(csvEscape).join(","),
@@ -169,7 +169,11 @@ export async function writeReport(
       if (rs.length === 0) return "<td class='dim'>-</td>";
       const m = median(rs.map((r) => r.TokPerSec));
       const g = rs.find((r) => r.QAGrade)?.QAGrade;
-      return `<td>${m.toFixed(1)}${g ? ` <span class='grade'>${esc(g)}</span>` : ""}</td>`;
+      const hits = rs.map((r) => r.NeedleHit).filter((v) => v !== undefined);
+      const chip = hits.length > 0
+        ? ` <span class='grade'>${hits.filter(Boolean).length}/${hits.length}</span>`
+        : g ? ` <span class='grade'>${esc(g)}</span>` : "";
+      return `<td>${m.toFixed(1)}${chip}</td>`;
     });
     tableRows += `<tr><td>${esc(pn)}</td>${cells.join("")}</tr>`;
   }
@@ -191,7 +195,7 @@ export async function writeReport(
   // All results collapsible
   let allHtml = "";
   if (rows.length > 0) {
-    const cols = ["Config", "Run", "Prompt", "PromptTokens", "CompletionTokens", "WallTimeMs", "TTFT_Ms", "TokPerSec", "DecodeTokPerSec", "QAGrade"];
+    const cols = ["Config", "Run", "Prompt", "PromptTokens", "CompletionTokens", "WallTimeMs", "TTFT_Ms", "TokPerSec", "DecodeTokPerSec", "NeedleHit", "QAGrade"];
     allHtml = "<details><summary>all results</summary><table><tr>" +
       cols.map((c) => `<th>${c}</th>`).join("") + "</tr>" +
       rows.map((r) => "<tr>" + cols.map((c) => `<td>${esc(String((r as unknown as Record<string, unknown>)[c] ?? ""))}</td>`).join("") + "</tr>").join("") +

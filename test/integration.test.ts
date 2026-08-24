@@ -73,7 +73,7 @@ describe("runner integration vs stub server", () => {
       const text = await csv.text();
       const lines = text.trim().split("\n");
       expect(lines.length).toBeGreaterThanOrEqual(5); // header + >= 4 prompts x runs
-      expect(lines[0]).toBe("Config,Label,Run,Prompt,Type,PromptTokens,CompletionTokens,WallTimeMs,TTFT_Ms,TokPerSec,DecodeTokPerSec,QASyntaxOk,QAPSAErrors,QAPSAWarnings,QAIdiomScore,QAGrade");
+      expect(lines[0]).toBe("Config,Label,Run,Prompt,Type,PromptTokens,CompletionTokens,WallTimeMs,TTFT_Ms,TokPerSec,DecodeTokPerSec,NeedleHit,QASyntaxOk,QAPSAErrors,QAPSAWarnings,QAIdiomScore,QAGrade");
     } finally {
       server.stop(true);
     }

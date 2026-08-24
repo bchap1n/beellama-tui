@@ -114,6 +114,7 @@ export interface BenchResultRow {
   TTFT_Ms: number;
   TokPerSec: number;
   DecodeTokPerSec: number;
+  NeedleHit?: number; // LongContext only: 1 = expected answer found, 0 = missed
   QASyntaxOk?: boolean;
   QAPSAErrors?: number;
   QAPSAWarnings?: number;

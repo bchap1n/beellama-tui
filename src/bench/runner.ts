@@ -212,6 +212,7 @@ export async function runBenchmark(
               TTFT_Ms: m.ttftMs,
               TokPerSec: m.wallMs > 0 ? Number(((m.completionTokens / m.wallMs) * 1000).toFixed(2)) : 0,
               DecodeTokPerSec: decodeMs > 0 ? Number(((m.completionTokens / decodeMs) * 1000).toFixed(2)) : 0,
+              ...(p.expect ? { NeedleHit: m.content.toLowerCase().includes(p.expect.toLowerCase()) ? 1 : 0 } : {}),
             };
             allRows.push(row);
             contents.push({ config: rc.name, prompt: p.name, type: p.type, content: m.content });
