@@ -175,13 +175,19 @@ describe("haystack expansion", () => {
     expect(c.split("THE-NEEDLE-VALUE").length - 1).toBe(1);
     expect(c.endsWith("question?")).toBe(true);
   });
-  test("unique needles per prompt (prefixed lines differ)", () => {
-    const two = expandLongCtx([
-      { ...raw[0], name: "a" },
-      { ...raw[0], name: "b" },
-    ], seed);
-    expect(two[0].messages[1].content.startsWith("[a p=0]")).toBe(true);
-    expect(two[1].messages[1].content.startsWith("[b p=0]")).toBe(true);
+  test("corpus mode fills with real code, seed mode prefixes lines", () => {
+    const [a] = expandLongCtx([{ ...raw[0], name: "a" }], seed);
+    const [b] = expandLongCtx([{ ...raw[0], name: "b" }], seed);
+    const ca = a.messages[1].content;
+    if (ca.includes("# --- ")) {
+      // corpus mode: real code blocks, per-prompt deterministic shuffle
+      expect(ca).toContain("# --- a block");
+      expect(b.messages[1].content).not.toBe(ca);
+    } else {
+      // seed fallback: prefixed lines
+      expect(ca.startsWith("[a p=0]")).toBe(true);
+      expect(b.messages[1].content.startsWith("[b p=0]")).toBe(true);
+    }
   });
 });
 

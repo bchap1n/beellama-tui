@@ -80,42 +80,23 @@ function seededRandom(seedText: string): () => number {
 }
 
 
-// Real-code filler blocks, shuffled deterministically. Empty array -> caller
-// falls back to seed lines.
+// Frozen corpus of real PowerShell/TypeScript, generated once from the beellama
+// repo + this repo's sources (prompts/haystack-corpus.txt). Bundled rather than
+// scanned at run time so every benchmark sees identical filler.
 let corpusCache: string[] | undefined;
 
 function loadCodeCorpus(): string[] {
   if (corpusCache) return corpusCache;
-  const roots = [
-    join(appFile("prompts", ".."), ".."), // repo root of this TUI
-  ];
-  const beellamaRun = join(roots[0], "..", "beellama", "run");
-  const dirs = [
-    join(beellamaRun),
-    join(roots[0], "src"),
-    join(roots[0], "scripts"),
-  ];
   const blocks: string[] = [];
-  for (const dir of dirs) {
-    try {
-      const names = readdirSync(dir, { recursive: true }) as string[];
-      for (const name of names) {
-        if (!/\.(ps1|ts|tsx)$/.test(name) || /node_modules|dist|archive/.test(name)) continue;
-        try {
-          const text = readFileSync(join(dir, String(name)), "utf8");
-          // Chunk into ~120-line blocks so one giant file spreads across many.
-          const lines = text.split(/\r?\n/);
-          for (let i = 0; i < lines.length; i += 120) {
-            const chunk = lines.slice(i, i + 120).join("\n").trim();
-            if (chunk.length > 400) blocks.push(chunk);
-          }
-        } catch {
-          // unreadable file — skip
-        }
-      }
-    } catch {
-      // missing dir — skip
+  try {
+    const text = readFileSync(appFile("prompts", "haystack-corpus.txt"), "utf8");
+    const lines = text.split(/\r?\n/);
+    for (let i = 0; i < lines.length; i += 120) {
+      const chunk = lines.slice(i, i + 120).join("\n").trim();
+      if (chunk.length > 400) blocks.push(chunk);
     }
+  } catch {
+    // missing corpus — caller falls back to seed lines
   }
   corpusCache = blocks;
   return blocks;
@@ -126,19 +107,24 @@ function buildHaystack(promptName: string, target: number, seedLines: string[]):
   const corpus = loadCodeCorpus();
   const parts: string[] = [];
   if (corpus.length > 0) {
-    // Shuffle block order per prompt (deterministic), then take until filled.
+    // Deterministic shuffle per prompt; on each full pass through the pool,
+    // reshuffle so the same blocks never sit adjacent across the seam.
     const pool = [...corpus];
     for (let i = pool.length - 1; i > 0; i--) {
       const j = Math.floor(rand() * (i + 1));
       [pool[i], pool[j]] = [pool[j], pool[i]];
     }
     let len = 0;
-    let round = 0;
     while (len < target && pool.length > 0) {
-      const chunk = pool[round % pool.length];
-      parts.push(`# --- ${promptName} block ${round} ---\n${chunk}`);
-      len += chunk.length + 64;
-      round++;
+      for (let k = 0; k < pool.length && len < target; k++) {
+        parts.push(`# --- ${promptName} block ${parts.length} ---\n${pool[k]}`);
+        len += pool[k].length + 64;
+      }
+      if (len >= target) break;
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(rand() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
     }
   } else {
     let len = 0;
