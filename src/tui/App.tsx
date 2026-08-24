@@ -38,7 +38,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const [gpu, setGpu] = useState<GpuStats | undefined>(undefined);
   const [bench, setBench] = useState<BenchPanelState>({
     open: false, focus: 0,
-    scope: "selected", picked: new Set(), set: "standard", runs: props.appCfg.benchmark.runs,
+    set: "standard", runs: props.appCfg.benchmark.runs,
     running: false,
   });
   const trackerRef = useRef<SessionTracker | undefined>(undefined);
@@ -131,31 +131,25 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     setStats(undefined);
   }, []);
 
-  const targetsFor = (state: BenchPanelState): ResolvedConfig[] => {
-    if (state.scope === "all") return configs;
-    if (state.scope === "picked") return configs.filter((c) => state.picked.has(c.name));
-    if (state.scope === "selected") {
-      const sel = viewRef.current.rows[viewRef.current.selected];
-      return sel ? [sel] : [];
-    }
-    return viewRef.current.rows;
+  const benchTargets = (): ResolvedConfig[] => {
+    const sel = viewRef.current.rows[viewRef.current.selected];
+    return sel ? [sel] : [];
   };
 
   const startBench = useCallback(async (state: BenchPanelState) => {
-    const targets = targetsFor(state);
+    const targets = benchTargets();
     if (targets.length === 0) {
-      setBench((b) => ({ ...b, summary: "no configs in scope" }));
+      setBench((b) => ({ ...b, summary: "no config highlighted — move the cursor to a row first" }));
       return;
     }
     abortBenchRef.current = false;
-    const preview = targets.length > 3
-      ? `${targets[0].name}, ${targets[1].name}, ${targets[2].name}, +${targets.length - 3} more`
-      : targets.map((t) => t.name).join(", ");
-    setBench((b) => ({ ...b, running: true, progress: undefined, summary: `starting · scope ${state.scope} · ${targets.length} config(s): ${preview}` }));
+    // Coding set grades one sample per prompt; extra runs would only duplicate rows.
+    const runs = state.set === "coding" ? 1 : state.runs;
+    setBench((b) => ({ ...b, running: true, progress: undefined, summary: `starting ${targets[0].name} · ${SET_LABELS[state.set] ?? state.set}` }));
     const onProgress = (p: BenchProgress) => setBench((b) => ({ ...b, progress: p }));
     try {
       await runBenchmark(
-        { config: "", set: state.set, runs: state.runs },
+        { config: "", set: state.set, runs },
         onProgress,
         () => abortBenchRef.current,
         targets,
@@ -165,13 +159,13 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
         running: false,
         summary: abortBenchRef.current
           ? `aborted — partial results in ${latestBenchDir() ?? "benchmarks/"}`
-          : `done — ${targets.length} config(s) · ${SET_LABELS[state.set] ?? state.set}`,
+          : `done · ${SET_LABELS[state.set] ?? state.set}`,
         resultDir: latestBenchDir(),
       }));
     } catch (e) {
       setBench((b) => ({ ...b, running: false, summary: `failed: ${e instanceof Error ? e.message : String(e)}` }));
     }
-  }, [configs]);
+  }, []);
 
   useInput((input, key) => {
     if (bench.running) {
@@ -203,18 +197,13 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
 
     if (bench.open) {
       if (key.escape) { setBench((b) => ({ ...b, open: false })); return; }
-      const SCOPES = ["selected", "filtered", "all", "picked"] as const;
-      const SETS = ["standard", "coding", "longctx"] as const;
-      if (key.upArrow) setBench((b) => ({ ...b, focus: Math.max(0, b.focus - 1) as 0 | 1 | 2 }));
-      else if (key.downArrow) setBench((b) => ({ ...b, focus: Math.min(2, b.focus + 1) as 0 | 1 | 2 }));
-      else if (key.leftArrow || key.rightArrow || input === " ") {
+      const SETS = ["standard", "longctx", "coding"] as const;
+      if (key.upArrow) setBench((b) => ({ ...b, focus: 0 as 0 | 1 }));
+      else if (key.downArrow) setBench((b) => ({ ...b, focus: (b.set === "coding" ? 0 : Math.min(1, b.focus + 1)) as 0 | 1 }));
+      else if (key.leftArrow || key.rightArrow) {
         const dir = key.leftArrow ? -1 : 1;
         setBench((b) => {
           if (b.focus === 0) {
-            const next = (SCOPES.indexOf(b.scope) + dir + SCOPES.length) % SCOPES.length;
-            return { ...b, scope: SCOPES[next] };
-          }
-          if (b.focus === 1) {
             const next = (SETS.indexOf(b.set) + dir + SETS.length) % SETS.length;
             return { ...b, set: SETS[next] };
           }
@@ -258,15 +247,6 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     else if (input === "t") cycleThink(viewRef.current.rows[viewRef.current.selected]?.name ?? "");
     else if (input === "b") setBench((b) => ({ ...b, open: !b.open }));
     else if (input === "m") setShowSources((v) => !v);
-    else if (input === " ") {
-      const cfg = viewRef.current.rows[viewRef.current.selected];
-      if (cfg) setBench((b) => {
-        const picked = new Set(b.picked);
-        if (picked.has(cfg.name)) picked.delete(cfg.name);
-        else picked.add(cfg.name);
-        return { ...b, picked };
-      });
-    }
     else if (input === "q") void quit();
     else if (input.length === 1 && /[a-zA-Z0-9._-]/.test(input)) setFilterText((t) => t + input);
   });
@@ -285,7 +265,6 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       }),
     );
   };
-
   const toggleFilterValue = (facet: keyof FacetFilters, value: string): void => {
     setFilters((f) => {
       const next = new Set(f[facet]);
@@ -351,11 +330,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       {(bench.open || bench.running) && (
         <Benchmark
           state={bench}
-          targets={targetsFor(bench).map((t) => t.name)}
-          selectedName={viewRef.current.rows[viewRef.current.selected]?.name}
-          visibleCount={rows.length}
-          totalCount={configs.length}
-          filtersActive={filtersActive(filters)}
+          targets={benchTargets().map((t) => t.name)}
         />
       )}
       {showFilters && (
