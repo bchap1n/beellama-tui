@@ -265,10 +265,13 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     setConfigs((cs) =>
       cs.map((c) => {
         if (c.name !== name) return c;
-        if (!c.reasoning) return { ...c, reasoning: true, reasoning_effort: "low" };
-        if (c.reasoning_effort === "high") return { ...c, reasoning: false, reasoning_effort: undefined };
-        if (c.reasoning_effort === "medium") return { ...c, reasoning: true, reasoning_effort: "high" };
-        return { ...c, reasoning_effort: "medium" };
+        let reasoning = c.reasoning;
+        let effort = c.reasoning_effort;
+        if (!c.reasoning) { reasoning = true; effort = "low"; }
+        else if (c.reasoning_effort === "high") { reasoning = false; effort = undefined; }
+        else if (c.reasoning_effort === "medium") { effort = "high"; }
+        else { effort = "medium"; }
+        return { ...c, reasoning, reasoning_effort: effort, facets: { ...c.facets, think: reasoning } };
       }),
     );
   };
