@@ -231,7 +231,8 @@ export function deriveFacets(cfg: LaunchConfig, modelRoots: string[]): Facets {
   const stem = cfg.model.gguf
     ? basename(cfg.model.gguf).replace(/\.gguf$/i, "")
     : basename(cfg.model.dir ?? "");
-  const { quant, model } = quantOf(stem);
+  let { quant, model } = quantOf(stem);
+  if (cfg.build === "exllamav3") quant = "EXL3"; // one facet for the engine; bitrates stay in the name
   return {
     provider: providerOf(cfg.model.gguf ?? cfg.model.dir ?? "", modelRoots, cfg.model.provider),
     quant,
