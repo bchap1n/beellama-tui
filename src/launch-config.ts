@@ -219,7 +219,7 @@ export function rootOf(ggufPath: string, modelRoots: string[]): string | undefin
 }
 
 export function specFacetOf(cfg: LaunchConfig): SpecFacet {
-  const t = cfg.spec?.type;
+  const t = cfg.spec?.type ?? cfg.draft_mode;
   if (!t || t === "none") return "none";
   if (t === "draft-mtp" || t === "mtp") return "mtp";
   if (t === "draft-dflash" || t === "dflash") return "dflash";
