@@ -33,6 +33,12 @@ export function resolveBinary(buildKey: string, appCfg: AppConfig): string {
     tried.push(lucebox);
   }
 
+  if (buildKey === "exllamav3") {
+    const kit = join(appCfg.beellama_repo, "sources", "Qwen3.8-27B-DFlash2-EXL3-5.0bpw", "start.ps1");
+    if (existsSync(kit)) return kit;
+    tried.push(kit);
+  }
+
   throw new Error(`Build '${buildKey}' not found. Tried:\n  ${tried.join("\n  ") || "(no candidates)"}`);
 }
 
@@ -46,8 +52,10 @@ export function engineIdentity(buildKey: string, binaryPath: string, _appCfg?: A
     "llama.cpp": "llama.cpp",
     "ik_llama": "ik_llama.cpp",
     "lucebox": "lucebox dflash",
+    "exllamav3": "exllamav3",
   };
   const name = NAMES[buildKey] ?? buildKey;
+  if (buildKey === "exllamav3") return name; // start.ps1 has no --version; probing would launch the server
   try {
     const v = Bun.spawnSync([binaryPath, "--version"], { stdout: "pipe", stderr: "pipe" });
     const out = (v.stdout.toString() + " " + v.stderr.toString()).trim();

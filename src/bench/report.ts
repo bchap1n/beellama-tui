@@ -290,7 +290,8 @@ ${analysisHtml}${allHtml}${failHtml}
 }
 
 function ggufName(c: ResolvedConfig): string {
-  const base = c.model.gguf.replaceAll("\\", "/").split("/").pop() ?? c.model.gguf;
+  const raw = c.model.gguf ?? c.model.dir ?? "";
+  const base = raw.replaceAll("\\", "/").split("/").pop() ?? raw;
   return base.replace(/\.gguf$/i, "");
 }
 

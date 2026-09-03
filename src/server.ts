@@ -1,6 +1,6 @@
 // Server process lifecycle: spawn, health wait, log ring buffer, tree kill.
 import { appendFile, mkdir } from "node:fs/promises";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
 import { buildArgs } from "./launch-config.ts";
 import type { AppConfig, ResolvedConfig } from "./types.ts";
 
@@ -34,6 +34,20 @@ async function portInUse(host: string, port: number): Promise<boolean> {
   }
 }
 
+// exllamav3 does not take llama-server flags. Spawn its own launcher (the
+// deployment-kit start.ps1) and let it own the venv, deps and serve flags;
+// config knobs travel through the kit's .env, not argv.
+function spawnExllamav3(resolved: ResolvedConfig, host: string, port: number, env: Record<string, string | undefined>): Bun.Subprocess {
+  if (!resolved.model.dir) throw new Error("exllamav3 configs must set model.dir");
+  const script = resolved.binaryPath; // start.ps1 path resolved via binaries override
+  return Bun.spawn(["pwsh", "-NoProfile", "-File", script], {
+    cwd: dirname(script),
+    stdout: "pipe",
+    stderr: "pipe",
+    env: { ...env, HOST: host, PORT: String(port) },
+  });
+}
+
 export async function launchServer(resolved: ResolvedConfig, appCfg: AppConfig, urlOverride?: string): Promise<RunningServer> {
   if (current) throw new Error(`A server is already running (${current.config.name}, pid ${current.pid}). Stop it first.`);
   const host = appCfg.server.host;
@@ -51,13 +65,15 @@ export async function launchServer(resolved: ResolvedConfig, appCfg: AppConfig, 
     }
   }
 
-  const args = buildArgs(resolved, host, port);
   const env = { ...process.env, ...resolved.env };
-  const proc = Bun.spawn([resolved.binaryPath, ...args], {
-    stdout: "pipe",
-    stderr: "pipe",
-    env,
-  });
+  const proc =
+    resolved.build === "exllamav3"
+      ? spawnExllamav3(resolved, host, port, env)
+      : Bun.spawn([resolved.binaryPath, ...buildArgs(resolved, host, port)], {
+          stdout: "pipe",
+          stderr: "pipe",
+          env,
+        });
 
   const ts = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
   await mkdir("logs", { recursive: true });

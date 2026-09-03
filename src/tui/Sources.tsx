@@ -11,13 +11,13 @@ export function Sources(props: {
       <Text bold color="magenta">model sources — edit beellama-tui.yaml model_roots to change</Text>
       {props.roots.map((r) => {
         const cfgs = props.rows.filter((c) => {
-          const norm = c.model.gguf.replaceAll("\\", "/").toLowerCase();
+          const norm = (c.model.gguf ?? c.model.dir ?? "").replaceAll("\\", "/").toLowerCase();
           const root = r.replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase();
           return norm.startsWith(root + "/");
         });
         const providers = [...new Set(cfgs.map((c) => c.facets.provider))];
         const outside = props.rows.filter((c) => !props.roots.some((rt) => {
-          const norm = c.model.gguf.replaceAll("\\", "/").toLowerCase();
+          const norm = (c.model.gguf ?? c.model.dir ?? "").replaceAll("\\", "/").toLowerCase();
           const root = rt.replaceAll("\\", "/").replace(/\/+$/, "").toLowerCase();
           return norm.startsWith(root + "/");
         }));

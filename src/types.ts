@@ -7,11 +7,14 @@ export interface LaunchConfig {
   tags: string[];
   build: string;
   model: {
-    gguf: string;
+    gguf?: string;
     provider?: string;
     mmproj?: string;
+    dir?: string;
   };
   draft?: { gguf: string };
+  cache_quant?: string;
+  draft_mode?: "mtp" | "dflash2" | "none";
   spec?: { type: string; draft_max?: number; cross_ctx?: number };
   ctx_size?: number;
   batch?: number;

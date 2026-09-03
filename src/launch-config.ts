@@ -12,10 +12,10 @@ const QUANT_RE =
 const TOP_KEYS = new Set([
   "name", "label", "description", "tags", "build", "model", "draft", "spec",
   "ctx_size", "batch", "ubatch", "cache_k", "cache_v", "kv_tail_tokens",
-  "kv_unified", "ngl", "flash_attn", "no_mmap", "mlock", "reasoning",
+  "kv_unified", "cache_quant", "draft_mode", "ngl", "flash_attn", "no_mmap", "mlock", "reasoning",
   "reasoning_effort", "sampling", "extra_args", "port", "env",
 ]);
-const MODEL_KEYS = new Set(["gguf", "provider", "mmproj"]);
+const MODEL_KEYS = new Set(["gguf", "provider", "mmproj", "dir"]);
 const SPEC_KEYS = new Set(["type", "draft_max", "cross_ctx"]);
 const SAMPLING_KEYS = new Set(["temp", "top_p", "top_k", "min_p", "presence_penalty", "repeat_penalty"]);
 
@@ -69,13 +69,16 @@ export function parseLaunchConfig(text: string, file: string): LaunchConfig {
   if (!isRecord(raw.model)) err(file, "model", "must be a mapping");
   const modelRaw = raw.model;
   checkKeys(modelRaw, MODEL_KEYS, file, "model.");
-  const gguf = asString(modelRaw.gguf, file, "model.gguf");
+  const gguf = modelRaw.gguf !== undefined ? asString(modelRaw.gguf, file, "model.gguf") : undefined;
+  const dir = modelRaw.dir !== undefined ? asString(modelRaw.dir, file, "model.dir") : undefined;
+  if (gguf === undefined && dir === undefined)
+    err(file, "model", "must set either model.gguf (llama-server builds) or model.dir (exllamav3)");
 
   const cfg: LaunchConfig = {
     name,
     tags: [],
     build: "beellama",
-    model: { gguf },
+    model: { gguf: gguf ?? "", dir },
     extra_args: [],
     port: 0,
     env: {},
@@ -115,6 +118,13 @@ export function parseLaunchConfig(text: string, file: string): LaunchConfig {
   if (raw.ctx_size !== undefined) cfg.ctx_size = asNumber(raw.ctx_size, file, "ctx_size");
   if (raw.batch !== undefined) cfg.batch = asNumber(raw.batch, file, "batch");
   if (raw.ubatch !== undefined) cfg.ubatch = asNumber(raw.ubatch, file, "ubatch");
+  if (raw.cache_quant !== undefined) cfg.cache_quant = asString(raw.cache_quant, file, "cache_quant");
+  if (raw.draft_mode !== undefined) {
+    const dm = asString(raw.draft_mode, file, "draft_mode");
+    if (dm !== "mtp" && dm !== "dflash2" && dm !== "none")
+      err(file, "draft_mode", "must be mtp, dflash2, or none");
+    cfg.draft_mode = dm;
+  }
   if (raw.cache_k !== undefined) cfg.cache_k = asString(raw.cache_k, file, "cache_k");
   if (raw.cache_v !== undefined) cfg.cache_v = asString(raw.cache_v, file, "cache_v");
   if (raw.kv_tail_tokens !== undefined) cfg.kv_tail_tokens = asNumber(raw.kv_tail_tokens, file, "kv_tail_tokens");
@@ -218,10 +228,12 @@ export function specFacetOf(cfg: LaunchConfig): SpecFacet {
 }
 
 export function deriveFacets(cfg: LaunchConfig, modelRoots: string[]): Facets {
-  const stem = basename(cfg.model.gguf).replace(/\.gguf$/i, "");
+  const stem = cfg.model.gguf
+    ? basename(cfg.model.gguf).replace(/\.gguf$/i, "")
+    : basename(cfg.model.dir ?? "");
   const { quant, model } = quantOf(stem);
   return {
-    provider: providerOf(cfg.model.gguf, modelRoots, cfg.model.provider),
+    provider: providerOf(cfg.model.gguf ?? cfg.model.dir ?? "", modelRoots, cfg.model.provider),
     quant,
     model,
     ctx: cfg.ctx_size ?? DEFAULT_CTX_SIZE,
@@ -238,7 +250,8 @@ export function resolveConfig(cfg: LaunchConfig, binaryPath: string, file: strin
 
 // Build llama-server args in the exact style of the migrated run/*.ps1 scripts.
 export function buildArgs(cfg: LaunchConfig, host: string, port: number): string[] {
-  const args: string[] = ["-m", cfg.model.gguf];
+  const args: string[] = ["-m", cfg.model.gguf ?? ""];
+  if (!cfg.model.gguf) throw new ConfigError("buildArgs: llama-server builds require model.gguf");
 
   if (cfg.model.mmproj) {
     args.push("--mmproj", cfg.model.mmproj, "--no-mmproj-offload");
@@ -269,7 +282,12 @@ export function buildArgs(cfg: LaunchConfig, host: string, port: number): string
 
   args.push("--reasoning", cfg.reasoning ? "on" : "off");
   const kwargs: Record<string, unknown> = { preserve_thinking: cfg.reasoning };
-  if (cfg.reasoning_effort) kwargs.reasoning_effort = cfg.reasoning_effort;
+  if (cfg.reasoning_effort) {
+    // Qwen-style templates read reasoning_effort. Muse Glimmer's jinja reads
+    // reasoning_strength and defaults to high if neither is set — effort alone is a no-op.
+    kwargs.reasoning_effort = cfg.reasoning_effort;
+    kwargs.reasoning_strength = cfg.reasoning_effort;
+  }
   args.push("--chat-template-kwargs", JSON.stringify(kwargs));
 
   const s = cfg.sampling;
