@@ -7,7 +7,7 @@ import type { Facets, LaunchConfig, ResolvedConfig, SpecFacet } from "./types.ts
 
 // Legacy quant regex from start-beellama.ps1 line 184, extended with Q4_0/Q8_0-style drafts.
 const QUANT_RE =
-  /(AD-Q\d+_K-Q\d+_K|UD-Q\d+_K_[A-Z]+|AD-Q\d+_K|IQ\d+_[A-Z]+|Q\d+_K_[A-Z]+|Q\d+_K|BF16|F32|F16|none|Q\d_\d|IQ\d_\w+)/;
+  /(EXL3-[\d.]+bpw|AD-Q\d+_K-Q\d+_K|UD-Q\d+_K_[A-Z]+|AD-Q\d+_K|IQ\d+_[A-Z]+|Q\d+_K_[A-Z]+|Q\d+_K|BF16|F32|F16|none|Q\d_\d|IQ\d_\w+)/;
 
 const TOP_KEYS = new Set([
   "name", "label", "description", "tags", "build", "model", "draft", "spec",
