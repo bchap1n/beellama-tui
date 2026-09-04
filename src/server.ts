@@ -35,16 +35,24 @@ async function portInUse(host: string, port: number): Promise<boolean> {
 }
 
 // exllamav3 does not take llama-server flags. Spawn its own launcher (the
-// deployment-kit start.ps1) and let it own the venv, deps and serve flags;
-// config knobs travel through the kit's .env, not argv.
+// deployment-kit start.ps1) and hand it the full per-config knobs through
+// environment variables (start.ps1 prefers env over .env).
 function spawnExllamav3(resolved: ResolvedConfig, host: string, port: number, env: Record<string, string | undefined>): Bun.Subprocess {
   if (!resolved.model.dir) throw new Error("exllamav3 configs must set model.dir");
   const script = resolved.binaryPath; // start.ps1 path resolved via binaries override
+  const cfgEnv: Record<string, string> = {
+    MODEL_DIR: resolved.model.dir,
+    HOST: host,
+    PORT: String(port),
+    CONTEXT_SIZE: String(resolved.ctx_size ?? 196608),
+  };
+  if (resolved.cache_quant) cfgEnv.CACHE_QUANT = resolved.cache_quant;
+  if (resolved.draft_mode) cfgEnv.DRAFT = resolved.draft_mode;
   return Bun.spawn(["pwsh", "-NoProfile", "-File", script], {
     cwd: dirname(script),
     stdout: "pipe",
     stderr: "pipe",
-    env: { ...env, HOST: host, PORT: String(port) },
+    env: { ...env, ...cfgEnv },
   });
 }
 

@@ -15,8 +15,8 @@ export interface LaunchConfig {
   draft?: { gguf: string };
   cache_quant?: string;
   draft_mode?: "mtp" | "dflash2" | "none";
-  spec?: { type: string; draft_max?: number; cross_ctx?: number };
   ctx_size?: number;
+  spec?: { type: string; draft_max?: number; cross_ctx?: number };
   batch?: number;
   ubatch?: number;
   cache_k?: string;
