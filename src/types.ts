@@ -123,6 +123,7 @@ export interface BenchResultRow {
   QAPSAWarnings?: number;
   QAIdiomScore?: number;
   QAGrade?: string;
+  FinishReason?: string;
 }
 
 export interface QualityResult {

@@ -21,6 +21,8 @@ export interface StreamMeasure {
   wallMs: number;
   ttftMs: number;
   content: string;
+  reasoning: string;
+  finishReason: string;
 }
 
 // POST /v1/chat/completions stream:true; TTFT = ms to first chunk.
@@ -52,6 +54,8 @@ export async function runPromptStreaming(
   let completionTokens = 0;
   let promptTokens = 0;
   let content = "";
+  let reasoning = "";
+  let finishReason = "";
   const decoder = new TextDecoder();
   let buf = "";
   for await (const chunk of res.body) {
@@ -65,14 +69,17 @@ export async function runPromptStreaming(
       if (data === "[DONE]") continue;
       try {
         const parsed = JSON.parse(data) as {
-          choices?: { delta?: { content?: string; reasoning_content?: string } }[];
+          choices?: { delta?: { content?: string; reasoning_content?: string }; finish_reason?: string | null }[];
           usage?: { prompt_tokens: number; completion_tokens: number };
         };
-        const tok = parsed.choices?.[0]?.delta?.content ?? parsed.choices?.[0]?.delta?.reasoning_content;
+        const choice = parsed.choices?.[0];
+        const tok = choice?.delta?.content ?? choice?.delta?.reasoning_content;
         if (tok) {
           if (ttftMs < 0) ttftMs = Date.now() - started;
-          content += tok;
+          if (choice?.delta?.reasoning_content !== undefined) reasoning += tok;
+          else content += tok;
         }
+        if (choice?.finish_reason) finishReason = choice.finish_reason;
         if (parsed.usage) {
           promptTokens = parsed.usage.prompt_tokens;
           completionTokens = parsed.usage.completion_tokens;
@@ -83,10 +90,14 @@ export async function runPromptStreaming(
     }
   }
   const wallMs = Date.now() - started;
-  if (completionTokens === 0 && content.length > 0) {
-    completionTokens = Math.max(1, Math.round(content.length / 4));
+  // No usage chunk (llama.cpp SSE, EXL3 kit): estimate from all generated
+  // text - throughput counts reasoning tokens even though grading does not.
+  const genChars = content.length + reasoning.length;
+  if (genChars > 0 && completionTokens === 0) {
+    completionTokens = Math.max(1, Math.round(genChars / 4));
   }
-  return { prompt: "", type: "", promptTokens, completionTokens, wallMs, ttftMs: ttftMs < 0 ? wallMs : ttftMs, content };
+  if (!finishReason && completionTokens >= maxTokens) finishReason = "length";
+  return { prompt: "", type: "", promptTokens, completionTokens, wallMs, ttftMs: ttftMs < 0 ? wallMs : ttftMs, content, reasoning, finishReason };
 }
 
 export function median(values: number[]): number {
@@ -149,7 +160,7 @@ export async function runBenchmark(
   await mkdir(outDir, { recursive: true });
 
   const allRows: BenchResultRow[] = [];
-  const contents: { config: string; prompt: string; type: string; content: string }[] = [];
+  const contents: { config: string; prompt: string; type: string; content: string; reasoning: string; finishReason: string; completionTokens: number }[] = [];
   const failures: string[] = [];
 
   const baseUrl = opts.url ?? serverUrl(appCfg);
@@ -159,8 +170,9 @@ export async function runBenchmark(
     const facets = deriveFacets(rc, appCfg.model_roots);
     onProgress?.({ configIndex: ci, configCount: resolvedList.length, configName: rc.name, promptIndex: 0, promptCount: prompts.length, runIndex: 0, runCount: runs, tokPerSec: 0, phase: "starting" });
 
-    // A manually-launched server would otherwise answer for every config.
-    await stopServer();
+    // A manually-launched server would otherwise answer for every config;
+    // port-owner kill also clears kit-launcher orphans from prior runs.
+    await stopServer(rc.port || appCfg.server.port);
     if (!opts.url) {
       try {
         await launchServer(rc, appCfg);
@@ -174,7 +186,7 @@ export async function runBenchmark(
       if (!healthy) {
         failures.push(`${rc.name}: health check timed out after ${bench.timeout_sec}s`);
         onProgress?.({ configIndex: ci, configCount: resolvedList.length, configName: rc.name, promptIndex: 0, promptCount: prompts.length, runIndex: 0, runCount: runs, tokPerSec: 0, phase: "failed", note: "health timeout" });
-        await stopServer();
+        await stopServer(rc.port || appCfg.server.port);
         continue;
       }
     }
@@ -198,7 +210,7 @@ export async function runBenchmark(
         for (;;) {
           if (shouldAbort?.()) break;
           try {
-            const m = await runPromptStreaming(p.messages, baseUrl, bench.max_tokens, bench.timeout_sec * 2);
+            const m = await runPromptStreaming(p.messages, baseUrl, rc.max_tokens ?? bench.max_tokens, bench.timeout_sec * 2);
             const decodeMs = m.wallMs > m.ttftMs ? m.wallMs - m.ttftMs : m.wallMs;
             const row: BenchResultRow = {
               Config: rc.name,
@@ -212,10 +224,11 @@ export async function runBenchmark(
               TTFT_Ms: m.ttftMs,
               TokPerSec: m.wallMs > 0 ? Number(((m.completionTokens / m.wallMs) * 1000).toFixed(2)) : 0,
               DecodeTokPerSec: decodeMs > 0 ? Number(((m.completionTokens / decodeMs) * 1000).toFixed(2)) : 0,
+              FinishReason: m.finishReason,
               ...(p.expect ? { NeedleHit: m.content.toLowerCase().replace(/\s+/g, " ").includes(p.expect.toLowerCase().replace(/\s+/g, " ")) ? 1 : 0 } : {}),
             };
             allRows.push(row);
-            contents.push({ config: rc.name, prompt: p.name, type: p.type, content: m.content });
+            contents.push({ config: rc.name, prompt: p.name, type: p.type, content: m.content, reasoning: m.reasoning, finishReason: m.finishReason, completionTokens: m.completionTokens });
             break;
           } catch (e) {
             attempt++;
@@ -238,7 +251,7 @@ export async function runBenchmark(
     }
 
     onProgress?.({ configIndex: ci, configCount: resolvedList.length, configName: rc.name, promptIndex: prompts.length, promptCount: prompts.length, runIndex: runs, runCount: runs, tokPerSec: 0, phase: "stopping" });
-    await stopServer();
+    await stopServer(rc.port || appCfg.server.port);
     if (bench.config_cooldown_sec > 0 && ci < resolvedList.length - 1 && !shouldAbort?.()) {
       await Bun.sleep(bench.config_cooldown_sec * 1000);
     }
@@ -247,6 +260,7 @@ export async function runBenchmark(
 
   // Quality analysis: one graded sample per config+prompt pair, applied to
   // every run row of that pair. Only Code/Coding prompts carry gradable output.
+  // Grade content only - reasoning stays out of the graded sample.
   const qaIdx = new Map<string, number>();
   const codeSamples: { prompt: string; content: string }[] = [];
   for (const c of contents) {
@@ -272,9 +286,22 @@ export async function runBenchmark(
     }
   }
 
+  // Persist the graded sample of every config+prompt pair so re-grading with a
+  // better extractor needs no re-run. Skip servers that report no usage (their
+  // token counts are estimates only).
+  const persisted: { config: string; prompt: string; type: string; content: string; reasoning: string; finishReason: string }[] = [];
+  for (const c of contents) {
+    if (!qaIdx.has(`${c.config}/${c.prompt}`)) continue;
+    persisted.push({ config: c.config, prompt: c.prompt, type: c.type, content: c.content, reasoning: c.reasoning, finishReason: c.finishReason });
+  }
+  if (persisted.length > 0) {
+    await writeFile(join(outDir, "samples.json"), JSON.stringify(persisted, null, 1));
+  }
+
   await writeReport(outDir, allRows, resolvedList, failures, setName);
 
   if (!onProgress) {
+    for (const f of failures) console.error(`FAIL: ${f}`);
     console.log(`results: ${join(outDir, "results.csv")}`);
     console.log(`report:  ${join(outDir, "results.html")}`);
   }

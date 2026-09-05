@@ -78,7 +78,7 @@ describe("arg builder", () => {
       "--jinja",
       "--no-host", "--metrics", "--log-colors", "off",
       "--reasoning", "on",
-      "--chat-template-kwargs", '{"preserve_thinking":true,"reasoning_effort":"low"}',
+      "--chat-template-kwargs", '{"preserve_thinking":true,"reasoning_effort":"low","reasoning_strength":"low"}',
       "--temp", "0.7", "--top-p", "0.8", "--top-k", "20",
       "--n-cpu-moe", "4",
     ];
@@ -121,18 +121,18 @@ describe("facets", () => {
 });
 
 describe("CSV header parity", () => {
-  test("byte-for-byte legacy header", () => {
+  test("legacy header plus FinishReason column", () => {
     expect(CSV_HEADER).toBe(
-      "Config,Label,Run,Prompt,Type,PromptTokens,CompletionTokens,WallTimeMs,TTFT_Ms,TokPerSec,DecodeTokPerSec,NeedleHit,QASyntaxOk,QAPSAErrors,QAPSAWarnings,QAIdiomScore,QAGrade",
+      "Config,Label,Run,Prompt,Type,PromptTokens,CompletionTokens,WallTimeMs,TTFT_Ms,TokPerSec,DecodeTokPerSec,NeedleHit,QASyntaxOk,QAPSAErrors,QAPSAWarnings,QAIdiomScore,QAGrade,FinishReason",
     );
   });
-  test("rows render with empty QA columns when absent", () => {
+  test("rows render with empty QA and FinishReason columns when absent", () => {
     const csv = rowsToCsv([{
       Config: "c", Label: "l", Run: 1, Prompt: "p", Type: "Code",
       PromptTokens: 10, CompletionTokens: 20, WallTimeMs: 1000, TTFT_Ms: 50,
       TokPerSec: 20, DecodeTokPerSec: 21,
     }]);
-    expect(csv.split("\n")[1]).toBe("c,l,1,p,Code,10,20,1000,50,20,21,,,,,,");
+    expect(csv.split("\n")[1]).toBe("c,l,1,p,Code,10,20,1000,50,20,21,,,,,,,");
   });
 });
 
