@@ -1,12 +1,12 @@
-# 64K ctx for vision budget, kvarn4 KV, think OFF, vision ON — DFlash + mmproj
-name: muse-glimmer-30b-ud-q4kxl-dflash-vision
-label: Muse Glimmer 30B UD-Q4_K_XL DFlash Vision
-description: 65K kvarn4, mmproj on, think off, DFlash n=15
+# 64K ctx for vision budget, kvarn4 KV, think OFF, vision ON — DFlash2 + mmproj
+name: muse-glimmer-30b-ud-q4kxl-dflash2-vision
+label: Muse Glimmer 30B UD-Q4_K_XL DFlash2 Vision
+description: 65K kvarn4, mmproj on, think off, DFlash2 n=15
 build: beellama
 model:
   gguf: "D:/.lmstudio/models/unsloth/meta-glimmer30b-gguf/Muse-Glimmer-30B-UD-Q4_K_XL.gguf"
   mmproj: "D:/.lmstudio/models/unsloth/meta-glimmer30b-gguf/mmproj-Muse-Glimmer-30B-Q4_K_M.gguf"
-draft: { gguf: "D:/.lmstudio/models/unsloth/meta-glimmer30b-gguf/dflash-Muse-Glimmer-30B-Q4_K_M.gguf" }
+draft: { gguf: "D:/.lmstudio/models/anbeeld/Muse-Glimmer-30B-DFlash2-Q4_K_M.gguf" }
 spec: { type: draft-dflash, draft_max: 15 }
 ctx_size: 65536
 batch: 256

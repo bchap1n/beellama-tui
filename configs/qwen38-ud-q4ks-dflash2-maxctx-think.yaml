@@ -1,0 +1,19 @@
+# 262K native max, kvarn4/kvarn3, DFlash2 drafter, think ON (HIGH)
+name: qwen38-ud-q4ks-dflash2-maxctx-think
+label: Qwen3.8-27B UD-Q4_K_S DFlash2 MaxCtx Think
+description: 262K kvarn KV (native max), think on (high), DFlash2 n=15
+tags: [maxctx]
+build: beellama
+model: { gguf: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_S.gguf" }
+draft: { gguf: "D:/.lmstudio/models/Qwen3.8-27B-DFlash2-Q4_K_M.gguf" }
+spec: { type: draft-dflash, draft_max: 15 }
+ctx_size: 262144
+batch: 4096
+ubatch: 512
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+reasoning_effort: high
+sampling: { temp: 0.7, top_p: 0.80, top_k: 20, min_p: 0.0, presence_penalty: 1.5, repeat_penalty: 1.0 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

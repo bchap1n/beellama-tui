@@ -1,0 +1,25 @@
+# 262K ctx, no vision, think ON — maxctx on 24 GB 3090
+# Weights: UD-Q4_K_XL 15.88 GB + DFlash2 Q4_K_M 1.65 GB ≈ 17.5 GB. No mmproj (~1.4 GB saved vs highctx).
+# KV: 13 global layers at kvarn4 scale with n_ctx; 39 SWA layers stay at W=2048 (kvarn3).
+# Tail 0: exact suffix is the intrinsic 128-token floor. A 1024-token f16 tail burns VRAM and does not help fit.
+# YaRN x2: trained 131072, Unsloth extended max 262144. llama.cpp caps at n_ctx_train without the override.
+# DFlash2 is all-SWA (W=2048), so draft KV does not grow with target ctx. Keep b256/ub64 (DFlash, not MTP).
+# VRAM: 17.5 + ~0.9 global KV @262K + SWA + draft window + compute ≈ 21–23 GB. If OOM, drop to 196608 or 131072 and drop YaRN.
+name: muse-glimmer-30b-ud-q4kxl-dflash2-think
+label: Muse Glimmer 30B UD-Q4_K_XL DFlash2 Think maxctx
+description: 262K YaRN kvarn4 + SWA kvarn3, tail 0, think high, no vision, DFlash2 n=15
+tags: [maxctx]
+build: beellama
+model: { gguf: "D:/.lmstudio/models/unsloth/meta-glimmer30b-gguf/Muse-Glimmer-30B-UD-Q4_K_XL.gguf" }
+draft: { gguf: "D:/.lmstudio/models/anbeeld/Muse-Glimmer-30B-DFlash2-Q4_K_M.gguf" }
+spec: { type: draft-dflash, draft_max: 15 }
+ctx_size: 262144
+batch: 256
+ubatch: 64
+cache_k: kvarn4
+cache_v: kvarn4
+kv_tail_tokens: 0
+reasoning: true
+reasoning_effort: high
+sampling: { temp: 1.0, top_p: 0.95, top_k: 64, min_p: 0.0 }
+extra_args: ["--cache-type-k-swa", "kvarn3", "--cache-type-v-swa", "kvarn3", "--kv-tail-type", "f16", "--rope-scaling", "yarn", "--rope-scale", "2", "--yarn-orig-ctx", "131072", "--override-kv", "muse-glimmer.context_length=int:262144", "--reasoning-preserve", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

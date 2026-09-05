@@ -1,6 +1,7 @@
-# 192K ctx, Hadamard 8,4 KV, think ON (server default) — EXL3 + MTP via the
-# MiaAI deployment kit's start.ps1 (TUI spawns pwsh -File start.ps1; the
-# launcher owns the venv, deps and serve flags).
+# 192K ctx, Hadamard 8,4 KV, think OFF - EXL3 + MTP via the MiaAI deployment
+# kit's start.ps1 (TUI spawns pwsh -File start.ps1; the launcher owns the venv,
+# deps and serve flags). NO_THINKING matches the other bench configs: the bench
+# grades content only, so think-ON configs burn the 4096-token budget on CoT.
 name: qwen38-exl3-35bpw-mtp
 label: Qwen3.8-27B EXL3 3.5bpw MTP
 description: 192K Hadamard 8,4 KV, MTP via exllamav3 kit launcher
@@ -11,5 +12,7 @@ model:
 ctx_size: 196608
 cache_quant: "8,4"
 draft_mode: mtp
-reasoning: true
+reasoning: false
 port: 8082
+env:
+  NO_THINKING: "1"

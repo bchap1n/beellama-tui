@@ -8,7 +8,7 @@ const COLS = [
   { key: "ctx", label: "Ctx", width: 8 },
   { key: "provider", label: "Provider", width: 12 },
   { key: "spec", label: "Spec", width: 7 },
-  { key: "think", label: "Think", width: 6 },
+  { key: "think", label: "Think", width: 7 },
   { key: "vision", label: "Vis", width: 4 },
   { key: "q", label: "Q", width: 2 },
 ] as const;
@@ -34,7 +34,7 @@ export function ConfigList(props: {
           String(f.ctx),
           f.provider,
           f.spec,
-          !r.reasoning ? "[off]" : r.reasoning_effort === "high" ? "[high]" : r.reasoning_effort === "medium" ? "[med]" : "[low]",
+          !r.reasoning ? "[off]" : r.reasoning_effort === "xhigh" ? "[xhigh]" : r.reasoning_effort === "high" ? "[high]" : r.reasoning_effort === "medium" ? "[med]" : r.reasoning_effort === "low" ? "[low]" : "[on]",
           f.vision ? "y" : "-",
           f.quality ? "*" : "-",
         ];
