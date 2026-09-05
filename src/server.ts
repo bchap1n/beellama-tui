@@ -140,22 +140,64 @@ export async function waitForHealth(url: string, timeoutSec: number, shouldAbort
   return false;
 }
 
-export async function stopServer(): Promise<void> {
-  const s = current;
-  if (!s) return;
-  current = undefined;
+// Kill whatever process listens on this port. Covers orphans our own child
+// spawn left behind (kit start.ps1 grandchildren survive a pwsh tree kill)
+// and stale manually-launched servers - the recurring "bench talks to the
+// wrong server" failure.
+async function listeningPids(port: number): Promise<string[]> {
+  const p = Bun.spawn(["cmd", "/c", "netstat -ano"], { stdout: "pipe", stderr: "ignore" });
+  const out = await new Response(p.stdout).text();
+  await p.exited;
+  return out
+    .split("\n")
+    .filter((l) => l.includes(`:${port} `) && l.includes("LISTENING"))
+    .map((l) => l.trim().split(/\s+/).pop() ?? "")
+    .filter((pid) => /^\d+$/.test(pid) && pid !== "0" && pid !== "4");
+}
+
+async function killPortOwner(port: number): Promise<void> {
+  if (process.platform !== "win32") return;
   try {
-    s.proc.kill();
-  } catch {
-    // already dead
-  }
-  const exited = await Promise.race([s.proc.exited, Bun.sleep(3000).then(() => null)]);
-  if (exited === null && process.platform === "win32") {
-    try {
-      const k = Bun.spawn(["taskkill", "/PID", String(s.pid), "/T", "/F"], { stdout: "ignore", stderr: "ignore" });
+    const pids = new Set(await listeningPids(port));
+    for (const pid of pids) {
+      const k = Bun.spawn(["taskkill", "/PID", pid, "/F"], { stdout: "ignore", stderr: "ignore" });
       await k.exited;
+    }
+    if (pids.size > 0) {
+      // A force-killed listener leaves the socket in a short grace period;
+      // launchServer's bind check would still see it. Poll until released.
+      for (let i = 0; i < 20; i++) {
+        if ((await listeningPids(port)).length === 0) break;
+        await Bun.sleep(500);
+      }
+    }
+  } catch {
+    // best effort
+  }
+}
+
+// Own-child kill plus port-owner kill. `port` (or the running config's port)
+// selects the listener to clear, so callers stop foreign servers on the port
+// they are about to use.
+export async function stopServer(port?: number): Promise<void> {
+  const s = current;
+  current = undefined;
+  if (s) {
+    try {
+      s.proc.kill();
     } catch {
-      // best effort
+      // already dead
+    }
+    const exited = await Promise.race([s.proc.exited, Bun.sleep(3000).then(() => null)]);
+    if (exited === null && process.platform === "win32") {
+      try {
+        const k = Bun.spawn(["taskkill", "/PID", String(s.pid), "/T", "/F"], { stdout: "ignore", stderr: "ignore" });
+        await k.exited;
+      } catch {
+        // best effort
+      }
     }
   }
+  const p = port ?? s?.config.port;
+  if (p) await killPortOwner(p);
 }

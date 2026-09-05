@@ -109,7 +109,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const doLaunch = useCallback(async (cfg: ResolvedConfig) => {
     setError(undefined);
     try {
-      await stopServer();
+      await stopServer(cfg.port || props.appCfg.server.port);
       trackerRef.current?.stop();
       await launchServer(cfg, props.appCfg);
       lastLaunchedRef.current = cfg.name;
