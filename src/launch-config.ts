@@ -13,7 +13,7 @@ const TOP_KEYS = new Set([
   "name", "label", "description", "tags", "build", "model", "draft", "spec",
   "ctx_size", "batch", "ubatch", "cache_k", "cache_v", "kv_tail_tokens",
   "kv_unified", "cache_quant", "draft_mode", "ngl", "flash_attn", "no_mmap", "mlock", "reasoning",
-  "reasoning_effort", "sampling", "extra_args", "port", "env",
+  "reasoning_effort", "sampling", "extra_args", "port", "env", "max_tokens",
 ]);
 const MODEL_KEYS = new Set(["gguf", "provider", "mmproj", "dir"]);
 const SPEC_KEYS = new Set(["type", "draft_max", "cross_ctx"]);
@@ -155,6 +155,10 @@ export function parseLaunchConfig(text: string, file: string): LaunchConfig {
     cfg.extra_args = raw.extra_args;
   }
   if (raw.port !== undefined) cfg.port = asNumber(raw.port, file, "port");
+  if (raw.max_tokens !== undefined) {
+    if (typeof raw.max_tokens !== "number" || raw.max_tokens < 1) err(file, "max_tokens", "must be a positive number");
+    cfg.max_tokens = raw.max_tokens;
+  }
   if (raw.env !== undefined) {
     if (!isRecord(raw.env)) err(file, "env", "must be a mapping of strings");
     for (const [k, v] of Object.entries(raw.env)) {

@@ -33,6 +33,7 @@ export interface LaunchConfig {
   extra_args: string[];
   port: number;
   env: Record<string, string>;
+  max_tokens?: number;
 }
 
 export interface Sampling {

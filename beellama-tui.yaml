@@ -10,7 +10,7 @@ configs_dir: configs
 gpu_power_limit_watts: 250
 benchmark:
   runs: 3
-  max_tokens: 2048
+  max_tokens: 4096
   warmup_runs: 3
   warmup_tokens: 256
   cooldown_sec: 0
