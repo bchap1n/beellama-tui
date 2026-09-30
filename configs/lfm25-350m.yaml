@@ -1,0 +1,12 @@
+# 32K ctx (model max), card sampling, no spec drafter for this model
+name: lfm25-350m
+label: LFM2.5-350M QAD-Q4_0
+description: LiquidAI LFM2.5-350M QAD-Q4_0 (distilled quant), 32K ctx, card sampling
+build: beellama
+model: { gguf: "D:/.lmstudio/models/liquidai/LFM2.5-350M-QAD-Q4_0.gguf" }
+ctx_size: 32768
+batch: 4096
+ubatch: 512
+reasoning: false
+sampling: { temp: 0.1, top_k: 50, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.05 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

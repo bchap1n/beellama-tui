@@ -1,0 +1,24 @@
+# 192K ctx, kvarn4 K / kvarn3 V + 1024-token exact tail, b2048/ub256, MTP n=4
+#
+# Q4_K_M V2 rebase of qwopus-27b-iq4xs-mtp-maxctx. The Q4_K_M weights are
+# 15.65 GiB vs 14.05 GiB IQ4_XS, so 262144 (native max) does not fit a 24 GB
+# card with KVarN; 196608 is the highest measured rung. Same spec/flags as the
+# IQ4_XS maxctx config otherwise. If VRAM headroom improves, 262144 is the
+# native max.
+name: qwopus-27b-v2-q4km-mtp-maxctx
+label: Qwopus3.8-27B Flash V2 Q4_K_M MTP MaxCtx
+description: 196K kvarn KV, think on, MTP n=4
+tags: [maxctx]
+build: beellama
+model: { gguf: "D:/.lmstudio/models/jackrong/Qwopus3.8-27B-Flash-V2-MTP-Q4_K_M.gguf" }
+spec: { type: draft-mtp, draft_max: 4 }
+ctx_size: 196608
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+max_tokens: 12288

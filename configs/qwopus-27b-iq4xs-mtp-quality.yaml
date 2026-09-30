@@ -1,0 +1,42 @@
+# 144K ctx, q8_0 KV (quality floor), b2048/ub256, think ON, MTP n=4
+#
+# Qwopus3.8-27B-Flash IQ4_XS (Jackrong) is a Qwen3.8-27B fine-tune that trades
+# a little accuracy (MMLU-Pro 91.28 vs 92.73 base) for ~13% faster decode and
+# less runaway reasoning. Card-reported MTP acceptance: 80.7% vs 66.1% base.
+# MTP head verified baked in (blk.64.nextn.*): --spec-type draft-mtp.
+#
+# THINKING: V2's template (7700 chars, new vs V1's 4718 binary one) exposes
+# reasoning_effort (xhigh/medium/low, medium default) but rejects "high" and
+# breaks this build's minja on any render ("cannot use null as iterable") --
+# override with the proven unsloth template
+# (configs/qwen38-ud-chat-template.jinja, high->xhigh alias), same as the
+# ThinkingCap configs. reasoning_effort is deliberately omitted (medium
+# default = the verified think-on point). Measured on V1 on 12 hard
+# verifiable problems x 3 reps: think OFF 75% (27/36), think ON 94% (34/36),
+# pooled p=0.013. Think ON. Use --reasoning-budget for a token ceiling if you
+# need one (sampler-level, works without template support); 2048 scored 92%,
+# same as unrestricted.
+#
+# Sampling: thinking-mode values per the Unsloth card (temp 1.0 / top_p 0.95 /
+# presence_penalty 0.0). Thinking costs ~230 reasoning tokens on hard prompts.
+# VRAM: 14.36 GiB model (V2, +0.31 over V1) + 4.90 q8_0 KV + 0.58 draft KV
+# + 0.73 RS + 0.69 compute = ~23.4 GiB, ~0.67 GiB free after load + short
+# smoke (measured 2026-09-23). 163840 now leaves only ~0.35 GiB -- do not
+# raise ctx on q8_0.
+# b2048/ub256 beats b4096/ub512 here (72.7 vs 68.6 tok/s, smaller compute buffer).
+name: qwopus-27b-iq4xs-mtp-quality
+label: Qwopus3.8-27B Flash V2 IQ4_XS MTP Quality
+description: 144K q8_0 KV, think on, MTP n=4, 14.4 GiB model
+tags: [quality]
+build: beellama
+model: { gguf: "D:/.lmstudio/models/jackrong/Qwopus3.8-27B-Flash-V2-MTP-IQ4_XS.gguf" }
+spec: { type: draft-mtp, draft_max: 4 }
+ctx_size: 147456
+batch: 2048
+ubatch: 256
+cache_k: q8_0
+cache_v: q8_0
+reasoning: true
+sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
+extra_args: ["--reasoning-budget", "8192", "--chat-template-file", "C:/Users/brock/Documents/github/beellama-tui/configs/qwen38-ud-chat-template.jinja", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+max_tokens: 12288

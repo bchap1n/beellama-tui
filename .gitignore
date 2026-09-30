@@ -4,3 +4,4 @@ sessions/
 benchmarks/
 logs/
 *.log
+*.bun-build

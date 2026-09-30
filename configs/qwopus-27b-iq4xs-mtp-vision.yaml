@@ -1,0 +1,37 @@
+# 160K ctx, kvarn4/kvarn3 KV, vision ON, think OFF, MTP n=4
+#
+# Vision tower: Jackrong's mmproj-F32 (2026-09, "Flash V2" metadata) and
+# Unsloth's mmproj-BF16 are the same 334 tensors -- verified value-identical,
+# 0 differing elements with per-tensor F32/BF16 types respected. Keep BF16:
+# 888 MiB vs 1.72 GiB on GPU, identical output.
+# mmproj_gpu: true makes the TUI omit --no-mmproj-offload, so the encoder runs
+# on GPU with mmproj offload (supported in beellama 0.4.6-dev build 11758,
+# v0.4.7 branch).
+# Cache: kvarn4/kvarn3 (Qwen maxctx pattern). TEMPLATE OVERRIDE REQUIRED: same
+# broken-embedded-template family as the other community tunes (rejects
+# "high", null-iterable in this minja) -- unsloth template file override added
+# (renders fine, vision-capable). Measured 2026-09-21 with the
+# offloaded tower: q8_0 KV caps at 128K (160K leaves ~0.2 GiB); kvarn at 160K
+# leaves ~3.2 GiB free (quiet GPU), ~0.9 GiB in a working session. 196608
+# kvarn loads but leaves ~2.6 GiB quiet (~0.3 GiB busy) -- too tight.
+# Re-measured 2026-09-23 on Flash V2 (14.36 GiB model, +0.31 over V1): ~2.5
+# GiB free quiet with the BF16 tower on GPU; margins shifted down accordingly.
+name: qwopus-27b-iq4xs-mtp-vision
+label: Qwopus3.8-27B Flash V2 IQ4_XS MTP Vision
+description: 160K kvarn KV, mmproj BF16 on GPU, think off, MTP n=4
+tags: [vision]
+build: beellama
+model:
+  gguf: "D:/.lmstudio/models/jackrong/Qwopus3.8-27B-Flash-V2-MTP-IQ4_XS.gguf"
+  mmproj: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/mmproj-BF16.gguf"
+  mmproj_gpu: true
+spec: { type: draft-mtp, draft_max: 4 }
+ctx_size: 163840
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: false
+sampling: { temp: 0.7, top_p: 0.80, top_k: 20, min_p: 0.0, presence_penalty: 1.5, repeat_penalty: 1.0 }
+extra_args: ["--chat-template-file", "C:/Users/brock/Documents/github/beellama-tui/configs/qwen38-ud-chat-template.jinja", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

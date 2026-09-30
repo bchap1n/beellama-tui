@@ -1,0 +1,23 @@
+# 128K ctx, nvfp4 KV, DFlash2 draft — EXL3 via Mia deployment kit (spawnExllamav3
+# forwards only MODEL_DIR/HOST/PORT/CONTEXT_SIZE/CACHE_QUANT/DRAFT; a spec block
+# here would be ignored). 131072 is the highest ctx that fits with DFlash2 on a
+# 24 GB card: measured 2026-09-27, load + real generation held with ~2.6 GB free
+# on a quiet GPU (~1.4 GB KV at this size + 16.7 GB weights + draft scratch).
+# 163840 and 196608 crash the DFlash2 spec-decode scratch during generation
+# (~0.6 GB free at 196608, busy GPU eats the rest) — do not raise without
+# re-probing. 98304 sibling stays as the extra-headroom fallback.
+name: qwen38-exl3-35bpw-dflash2-maxctx
+label: Qwen3.8-27B EXL3 3.5bpw DFlash2 MaxCtx
+description: 128K nvfp4 KV, 1.4GB DFlash2 draft via exllamav3 kit
+tags: [exl3, dflash2, maxctx]
+build: exllamav3
+model:
+  dir: "D:/.lmstudio/models/exl3/Qwen3.8-27B-EXL3-3.5bpw"
+  provider: Mia-AiLab
+ctx_size: 131072
+cache_quant: nvfp4
+draft_mode: dflash2
+draft_dir: "D:/.lmstudio/models/exl3/Qwen3.8-27B-DFlash2-EXL3-5.0bpw"
+port: 8082
+env:
+  NO_THINKING: "1"

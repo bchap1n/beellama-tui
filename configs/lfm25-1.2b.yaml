@@ -1,0 +1,14 @@
+# 64K ctx, think off. No spec decoding: measured baseline 137 t/s vs 78-95 t/s
+# with the Anbeeld DSpark drafter (acceptance ~4% even greedy) on beellama.cpp.
+# Re-add spec if a newer beellama.cpp fixes DSpark acceptance for LFM2.5.
+name: lfm25-1.2b
+label: LFM2.5-1.2B Q8_0
+description: LiquidAI LFM2.5-1.2B-Instruct Q8_0, 64K ctx, no spec decoding
+build: beellama
+model: { gguf: "D:/.lmstudio/models/liquidai/LFM2.5-1.2B-Instruct-Q8_0.gguf" }
+ctx_size: 65536
+batch: 4096
+ubatch: 512
+reasoning: false
+sampling: { temp: 0.7, top_p: 0.8, top_k: 20, min_p: 0.0, presence_penalty: 1.0, repeat_penalty: 1.0 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

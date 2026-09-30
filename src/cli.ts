@@ -2,6 +2,7 @@
 import { readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { loadAppConfig } from "./config.ts";
+import { appFile } from "./approot.ts";
 import { deriveFacets, loadLaunchConfigs, parseLaunchConfig } from "./launch-config.ts";
 import { resolveBinary } from "./binary.ts";
 import type { AppConfig, LaunchConfig } from "./types.ts";
@@ -9,7 +10,7 @@ import { runBenchmark } from "./bench/runner.ts";
 import { runTui } from "./tui/App.tsx";
 
 export async function loadAll(appCfg: AppConfig): Promise<{ configs: LaunchConfig[]; errors: string[] }> {
-  const dir = join(process.cwd(), appCfg.configs_dir);
+  const dir = appFile(appCfg.configs_dir);
   const configs: LaunchConfig[] = [];
   const errors: string[] = [];
   let names: string[] = [];
@@ -34,7 +35,7 @@ async function listCmd(): Promise<number> {
   const { configs, errors } = await loadAll(appCfg);
   for (const e of errors) console.error(`✗ ${e}`);
   if (configs.length === 0 && errors.length === 0) {
-    console.log(`No configs found in ${join(process.cwd(), appCfg.configs_dir)}`);
+    console.log(`No configs found in ${appFile(appCfg.configs_dir)}`);
     return 1;
   }
   const header = ["NAME", "MODEL", "QUANT", "CTX", "PROVIDER", "SPEC", "THINK", "VISION", "Q", "TAGS"];

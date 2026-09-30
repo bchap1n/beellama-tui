@@ -7,7 +7,8 @@ server:
   host: 127.0.0.1
   port: 8082
 configs_dir: configs
-gpu_power_limit_watts: 250
+gpu_power_limit_watts: 280   # powerlimit task only; baked in by the installer, not read at TUI start
+gpu_clock_mhz: 0             # powerlimit task -Clock; 0 = unlocked. Not read at TUI start
 benchmark:
   runs: 3
   max_tokens: 4096

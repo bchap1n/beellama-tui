@@ -1,10 +1,10 @@
-// Report generation: legacy-header CSV, single-file neon HTML, DeepSeek verdict.
+// Report generation: legacy-header CSV, single-file neon HTML, NVIDIA verdict.
 import { writeFile } from "node:fs/promises";
 import * as os from "node:os";
 import { join } from "node:path";
 import type { BenchResultRow, ResolvedConfig } from "../types.ts";
 import { appFile } from "../approot.ts";
-import { engineIdentity } from "../binary.ts";
+import { engineIdentity, ompIdentity } from "../binary.ts";
 import { median } from "./runner.ts";
 
 // Byte-for-byte legacy header plus the truncation-truth column.
@@ -39,58 +39,78 @@ interface AnalysisPrompts {
   template_compare?: string;
 }
 
-export async function deepSeekVerdict(
+export interface VerdictOutcome {
+  text?: string;
+  /** Why no verdict: absent key, HTTP status, timeout, network error. */
+  reason?: string;
+}
+
+// Verdict provider: NVIDIA NIM. High reasoning effort needs a long budget:
+// 8192 output tokens at ~100 tok/s is the normal case, not the slow one.
+const VERDICT_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
+const VERDICT_MODEL = "meta/muse-glimmer-30b";
+const VERDICT_TIMEOUT_MS = 300_000;
+
+export async function analysisVerdict(
   dataText: string,
   configCount: number,
   promptsDir: string,
-): Promise<string | undefined> {
-  const key = process.env.DEEPSEEK_API_KEY;
-  if (!key) return undefined;
+): Promise<VerdictOutcome> {
+  const key = process.env.NVIDIA_API_KEY;
+  if (!key) return { reason: "NVIDIA_API_KEY not set" };
   try {
     const ana = JSON.parse(await Bun.file(join(promptsDir, "prompts-analysis.json")).text()) as AnalysisPrompts;
     const isCompare = configCount > 1;
     const template = isCompare ? ana.template_compare : ana.template_single;
-    if (!template) return undefined;
+    if (!template) return { reason: `no ${isCompare ? "template_compare" : "template_single"} in prompts-analysis.json` };
     const extra = isCompare ? "6) Which model wins for coding quality and why." : "";
     const body = template
       .replaceAll("{0}", dataText)
       .replaceAll("{1}", extra)
       .replaceAll("{2}", String(configCount));
-    const res = await fetch("https://api.deepseek.com/v1/chat/completions", {
+    const res = await fetch(VERDICT_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${key}`, Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "deepseek-v4-flash",
+        model: VERDICT_MODEL,
         messages: [
           { role: "system", content: ana.system },
           { role: "user", content: body },
         ],
-        max_tokens: 2500,
-        temperature: 0.2,
-        thinking: { type: "disabled" },
+        max_tokens: 8192,
+        temperature: 1,
+        top_p: 0.95,
+        reasoning_effort: "high",
+        stream: false,
       }),
-      signal: AbortSignal.timeout(90_000),
+      signal: AbortSignal.timeout(VERDICT_TIMEOUT_MS),
     });
-    if (!res.ok) return undefined;
+    if (!res.ok) {
+      const detail = (await res.text().catch(() => "")).replace(/\s+/g, " ").trim().slice(0, 200);
+      return { reason: `NVIDIA returned HTTP ${res.status}${detail ? `: ${detail}` : ""}` };
+    }
     const json = (await res.json()) as { choices?: { message?: { content?: string; reasoning_content?: string } }[] };
     const msg = json.choices?.[0]?.message;
     const verdict = (msg?.content || msg?.reasoning_content || "").trim();
-    return verdict.length > 0 ? verdict : undefined;
-  } catch {
-    return undefined;
+    return verdict.length > 0 ? { text: verdict } : { reason: "NVIDIA returned an empty verdict" };
+  } catch (e) {
+    const aborted = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
+    return { reason: aborted ? `NVIDIA request timed out after ${VERDICT_TIMEOUT_MS / 1000}s` : `NVIDIA request failed: ${e instanceof Error ? e.message : String(e)}` };
   }
 }
 
 // Deterministic quality score: fixed weights over bridge QA columns, no LLM variance.
 // Doctrine matches the legacy harness: syntax and PSA dominate, idiom is a capped bonus.
-export function tldrScore(rows: BenchResultRow[]): { score: number; gradeMode: string; avgPsaE: number; avgPsaW: number } | undefined {
-  // Only meaningful when QA columns exist (coding set); otherwise fake scores would render.
-  if (rows.length === 0 || !rows.some((r) => r.QASyntaxOk !== undefined || r.QAGrade !== undefined)) return undefined;
-  const n = rows.length;
-  const synFail = rows.filter((r) => r.QASyntaxOk === false).length / n;
-  const avgPsaE = rows.reduce((a, r) => a + (r.QAPSAErrors ?? 0), 0) / n;
-  const avgPsaW = rows.reduce((a, r) => a + (r.QAPSAWarnings ?? 0), 0) / n;
-  const idioms = rows.map((r) => r.QAIdiomScore).filter((v): v is number => v !== undefined && v >= 0);
+// Only graded rows count: truncated runs carry no QA columns, so they must not
+// dilute the penalty (5 empty answers out of 10 would otherwise look like passes).
+export function tldrScore(rows: BenchResultRow[]): { score: number; gradeMode: string; avgPsaE: number; avgPsaW: number; graded: number; total: number } | undefined {
+  const graded = rows.filter((r) => r.QAGrade !== undefined || r.QASyntaxOk !== undefined);
+  if (graded.length === 0) return undefined;
+  const n = graded.length;
+  const synFail = graded.filter((r) => r.QASyntaxOk === false).length / n;
+  const avgPsaE = graded.reduce((a, r) => a + (r.QAPSAErrors ?? 0), 0) / n;
+  const avgPsaW = graded.reduce((a, r) => a + (r.QAPSAWarnings ?? 0), 0) / n;
+  const idioms = graded.map((r) => r.QAIdiomScore).filter((v): v is number => v !== undefined && v >= 0);
   const avgIdiom = idioms.length > 0 ? idioms.reduce((a, b) => a + b, 0) / idioms.length : 0;
   let score = 10
     - 4 * synFail          // syntax failure is fatal-ish: -4 at 100% failure
@@ -99,11 +119,11 @@ export function tldrScore(rows: BenchResultRow[]): { score: number; gradeMode: s
     + Math.max(0, Math.min(0.5, (avgIdiom - 70) / 30)); // pure bonus: 0 below 70%, +0.5 max above
   score = Math.max(0, Math.min(10, score));
   const gradeCounts = new Map<string, number>();
-  for (const r of rows) {
+  for (const r of graded) {
     if (r.QAGrade) gradeCounts.set(r.QAGrade, (gradeCounts.get(r.QAGrade) ?? 0) + 1);
   }
   const gradeMode = [...gradeCounts.entries()].sort((a, b) => b[1] - a[1])[0]?.[0] ?? "-";
-  return { score: Number(score.toFixed(1)), gradeMode, avgPsaE: Number(avgPsaE.toFixed(1)), avgPsaW: Number(avgPsaW.toFixed(1)) };
+  return { score: Number(score.toFixed(1)), gradeMode, avgPsaE: Number(avgPsaE.toFixed(1)), avgPsaW: Number(avgPsaW.toFixed(1)), graded: n, total: rows.length };
 }
 
 function esc(s: string): string {
@@ -117,6 +137,7 @@ export async function writeReport(
   failures: string[],
   setName: string,
   engine?: string,
+  harness?: string,
 ): Promise<void> {
   await writeFile(join(outDir, "results.csv"), rowsToCsv(rows));
 
@@ -136,9 +157,9 @@ export async function writeReport(
     const ranked = [...tldrRows].sort((a, b) => b.s!.score - a.s!.score);
     const winner = ranked[0];
     tldrHtml = "<div class='sec'>TLDR · deterministic score</div><table class='tldr'>" +
-      "<tr><th>config</th><th>score</th><th>grade</th><th>psa e/w</th><th>tok/s</th></tr>" +
+      "<tr><th>config</th><th>score</th><th>grade</th><th>graded</th><th>psa e/w</th><th>tok/s</th></tr>" +
       ranked.map((e) =>
-        `<tr${e.cfg === winner.cfg ? " class='winner'" : ""}><td>${esc(e.cfg)}</td><td><b>${e.s!.score.toFixed(1)}</b></td><td>${esc(e.s!.gradeMode)}</td><td>${e.s!.avgPsaE}/${e.s!.avgPsaW}</td><td>${e.tok.toFixed(1)}</td></tr>`,
+        `<tr${e.cfg === winner.cfg ? " class='winner'" : ""}><td>${esc(e.cfg)}</td><td><b>${e.s!.score.toFixed(1)}</b></td><td>${esc(e.s!.gradeMode)}</td><td>${e.s!.graded}/${e.s!.total}</td><td>${e.s!.avgPsaE}/${e.s!.avgPsaW}</td><td>${e.tok.toFixed(1)}</td></tr>`,
       ).join("") +
       "</table>";
   }
@@ -171,11 +192,12 @@ export async function writeReport(
       const g = rs.find((r) => r.QAGrade)?.QAGrade;
       const trunc = rs.filter((r) => r.FinishReason === "length").length;
       const hits = rs.map((r) => r.NeedleHit).filter((v) => v !== undefined);
-      const chip = hits.length > 0
-        ? ` <span class='grade'>${hits.filter(Boolean).length}/${hits.length}</span>`
-        : g ? ` <span class='grade'>${esc(g)}</span>` : "";
-      const tmark = trunc > 0 ? ` <span class='trunc' title='${trunc}/${rs.length} run(s) hit the token cap'>trunc ${trunc}</span>` : "";
-      return `<td>${m.toFixed(1)}${chip}${tmark}</td>`;
+      const mark = hits.length > 0 ? `${hits.filter(Boolean).length}/${hits.length}` : g ? esc(g) : "";
+      const tmark = trunc > 0
+        ? `<span class='trunc' title='${trunc}/${rs.length} run(s) hit the token cap'>trunc ${trunc}</span>`
+        : `<span class='trunc'></span>`;
+      // Fixed-width slots keep the tok/s column aligned whether or not a badge shows.
+      return `<td><span class='val'>${m.toFixed(1)}</span><span class='mark'>${mark}</span>${tmark}</td>`;
     });
     tableRows += `<tr><td>${esc(pn)}</td>${cells.join("")}</tr>`;
   }
@@ -185,7 +207,7 @@ export async function writeReport(
   const graded = rows.filter((r) => r.QAGrade);
   if (graded.length > 0) {
     const grades = ["A", "B+", "B", "C", "D", "F"];
-    gradeHtml = "<div class='sec'>grade distribution</div><table><tr><th>config</th>" +
+    gradeHtml = "<div class='sec'>grade distribution · graded runs only</div><table><tr><th>config</th>" +
       grades.map((g) => `<th>${g}</th>`).join("") + "</tr>";
     for (const cfg of configs) {
       const counts = grades.map((g) => graded.filter((r) => r.Config === cfg.name && r.QAGrade === g).length);
@@ -213,26 +235,37 @@ export async function writeReport(
     const tok = median(list.map((r) => r.TokPerSec));
     const ttft = median(list.map((r) => r.TTFT_Ms));
     const s = tldrRows.find((e) => e.cfg === cfg.name)?.s;
-    dataLines.push(`CONFIG: ${cfg.name} (${ggufName(cfg)}, ctx ${cfg.facets.ctx}) | TLDR score ${s ? s.score.toFixed(1) + "/10" : "n/a"} grade mode ${s?.gradeMode ?? "-"} | ${tok.toFixed(1)} tok/s median TTFT ${ttft.toFixed(0)}ms | PSA err/warn avg ${s ? `${s.avgPsaE}/${s.avgPsaW}` : "n/a"}`);
+    dataLines.push(`CONFIG: ${cfg.name} (${ggufName(cfg)}, ctx ${cfg.facets.ctx}) | TLDR score ${s ? s.score.toFixed(1) + "/10" : "n/a"} grade mode ${s?.gradeMode ?? "-"} | graded ${s ? `${s.graded}/${s.total}` : "n/a"} prompts | ${tok.toFixed(1)} tok/s median TTFT ${ttft.toFixed(0)}ms | PSA err/warn avg ${s ? `${s.avgPsaE}/${s.avgPsaW}` : "n/a"}`);
     for (const pn of promptNames) {
       const rs = list.filter((r) => r.Prompt === pn);
       if (rs.length === 0) continue;
       const m = median(rs.map((r) => r.TokPerSec));
-      const g = rs.find((r) => r.QAGrade)?.QAGrade ?? "";
-      dataLines.push(`  - ${pn}: ${m.toFixed(1)} tok/s ${g ? `grade ${g}` : ""}`);
+      const r0 = rs.find((r) => r.QAGrade);
+      const idiom = r0?.QAIdiomScore !== undefined && r0.QAIdiomScore >= 0 ? ` idiom ${r0.QAIdiomScore}%` : "";
+      // A missing grade means the cap only when a run actually stopped on it.
+      // Otherwise the QA bridge was unavailable or the prompt is not gradable.
+      const capped = rs.filter((r) => r.FinishReason === "length").length;
+      const note = r0 ? `grade ${r0.QAGrade}${idiom}` : capped > 0 ? `ungraded - ${capped}/${rs.length} run(s) hit the token cap` : "";
+      dataLines.push(`  - ${pn}: ${m.toFixed(1)} tok/s${note ? ` ${note}` : ""}`);
     }
   }
-  const verdict = await deepSeekVerdict(dataLines.join("\n"), configs.length, appFile("prompts"));
-  if (verdict) {
-    analysisHtml = `<div class='sec'>analysis · deepseek-v4-flash</div><div class='analysis-text'>${esc(verdict).replace(/\n/g, "<br>")}</div>`;
-  } else if (setName === "coding") {
-    analysisHtml = "<div class='sec'>analysis</div><p class='dim'>Skipped: DEEPSEEK_API_KEY not set.</p>";
+  const verdict = await analysisVerdict(dataLines.join("\n"), configs.length, appFile("prompts"));
+  if (verdict.text) {
+    analysisHtml = `<div class='sec'>analysis · ${VERDICT_MODEL}</div><div class='analysis-text'>${esc(verdict.text).replace(/\n/g, "<br>")}</div>`;
+  } else {
+    // Every set, not just coding: a rotated or missing key must not leave a
+    // report that looks normal. The reason names the key, the status, or the timeout.
+    analysisHtml = `<div class='sec'>analysis</div><p class='dim'>Skipped: ${esc(verdict.reason ?? "no verdict")}.</p>`;
   }
 
   const failHtml = failures.length > 0
     ? `<div class='sec'>failures</div><pre class='dim'>${esc(failures.join("\n"))}</pre>`
     : "";
 
+  // Coding grades follow OMP's PowerShell conventions, so the run records the
+  // harness build it was measured against. Other sets are engine-only.
+  const harnessName = setName === "coding" ? (harness ?? ompIdentity()) : undefined;
+  const harnessLine = harnessName ? ` · harness: ${esc(harnessName)}` : "";
   const when = new Date();
   const stamp = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, "0")}-${String(when.getDate()).padStart(2, "0")} ${String(when.getHours()).padStart(2, "0")}:${String(when.getMinutes()).padStart(2, "0")}`;
   const html = `<!DOCTYPE html>
@@ -262,8 +295,10 @@ export async function writeReport(
   th:first-child, td:first-child { text-align:left; color:#e8eef2; }
   thead th { color:var(--mut); font-weight:500; font-size:10px; text-transform:uppercase; letter-spacing:.5px; border-bottom:1px solid #2a343e; }
   tr:hover td { background:#141a20; }
-  .grade { color:var(--mut); font-size:10px; }
-  .trunc { color:#ffd60a; font-size:10px; border:1px solid #3a3320; border-radius:3px; padding:0 4px; margin-left:3px; }
+  td .val { display:inline-block; min-width:42px; text-align:right; }
+  td .mark { display:inline-block; min-width:26px; text-align:right; color:var(--mut); font-size:10px; }
+  td .trunc { display:inline-block; min-width:54px; margin-left:4px; text-align:center; color:#ffd60a; font-size:10px; border:1px solid #3a3320; border-radius:3px; padding:0 4px; }
+  td .trunc:empty { visibility:hidden; }
   .tldr .winner td { background:#12200f; }
   .dim { color:var(--mut); }
   .analysis-text { white-space:normal; max-width:900px; color:var(--txt); }
@@ -273,7 +308,7 @@ export async function writeReport(
   .col { min-width:340px; }
 </style></head><body>
 <h1><b>beellama-tui</b> benchmark · ${esc(setTitle(setName))} · ${esc(stamp)}</h1>
-<div class="sub">${rows.length} rows · ${configs.length} config(s) · ${runsOf(rows)} runs per prompt (median shown) · engine: ${esc(engine ?? enginesOf(configs))}</div>
+<div class="sub">${rows.length} rows · ${configs.length} config(s) · ${runsOf(rows)} runs per prompt (median shown) · engine: ${esc(engine ?? enginesOf(configs))}${harnessLine}</div>
 ${tldrHtml}
 <div class="sec">configurations under test</div>
 <div class="grid">${cardsHtml}</div>

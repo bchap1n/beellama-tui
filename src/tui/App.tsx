@@ -10,7 +10,9 @@ import { SessionTracker } from "../metrics.ts";
 import { ConfigList } from "./ConfigList.tsx";
 import { Filters, emptyFilters, filtersActive, matchesFilters, type FacetFilters } from "./Filters.tsx";
 import { Sources } from "./Sources.tsx";
-import { LaunchView, OutputView } from "./LaunchView.tsx";
+import { Scripts, SCRIPT_ACTIONS, type ScriptAction } from "./Scripts.tsx";
+import { applyGpuProfile, installGpuTasks, runGpuTask, taskInstalled, APPLY_TASK } from "../gpu-profile.ts";
+import { LaunchView, OutputView, outputScrollControls } from "./LaunchView.tsx";
 import { StatsBar } from "./StatsBar.tsx";
 import { probeGpu, type GpuStats } from "./gpu.ts";
 import { Benchmark, SET_LABELS, type BenchPanelState } from "./Benchmark.tsx";
@@ -26,12 +28,20 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const [selected, setSelected] = useState(0);
   const [parseErrors, setParseErrors] = useState<string[]>(props.errors);
   const [filterText, setFilterText] = useState("");
+  const [filterMode, setFilterMode] = useState(false);
   const [filters, setFilters] = useState<FacetFilters>(emptyFilters);
   const [filterCursor, setFilterCursor] = useState(0);
   const [sortIdx, setSortIdx] = useState(0);
   const [showOutput, setShowOutput] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [showSources, setShowSources] = useState(false);
+  const [scripts, setScripts] = useState<{
+    open: boolean;
+    cursor: number;
+    busy: boolean;
+    status?: string;
+    installed?: boolean;
+  }>({ open: false, cursor: 0, busy: false });
   const [server, setServer] = useState(() => getRunningServer());
   const [error, setError] = useState<string | undefined>(undefined);
   const [stats, setStats] = useState<SessionStats | undefined>(undefined);
@@ -50,7 +60,9 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   useEffect(() => {
     const t = setInterval(() => {
       setServer(getRunningServer());
-      setStats(trackerRef.current?.stats);
+      // Spread: SessionTracker mutates its stats object in place, and React
+      // bails out on Object.is-equal state — a same-ref pass freezes the bar.
+      setStats(trackerRef.current?.stats ? { ...trackerRef.current.stats } : undefined);
     }, 500);
     return () => clearInterval(t);
   }, []);
@@ -111,10 +123,10 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     try {
       await stopServer(cfg.port || props.appCfg.server.port);
       trackerRef.current?.stop();
-      await launchServer(cfg, props.appCfg);
+      const running = await launchServer(cfg, props.appCfg);
       lastLaunchedRef.current = cfg.name;
       const tracker = new SessionTracker();
-      tracker.start(cfg.name, getRunningServer()?.pid ?? 0, serverUrlOf(props.appCfg));
+      tracker.start(cfg.name, running.pid, running.url);
       trackerRef.current = tracker;
       setServer(getRunningServer());
     } catch (e) {
@@ -129,6 +141,27 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     await stopServer();
     setServer(undefined);
     setStats(undefined);
+  }, []);
+
+  const openScripts = useCallback(async () => {
+    setScripts((s) => ({ ...s, open: true, status: undefined }));
+    const installed = await taskInstalled(APPLY_TASK);
+    setScripts((s) => ({ ...s, installed }));
+  }, []);
+
+  const runScriptAction = useCallback(async (id: ScriptAction["id"]) => {
+    setScripts((s) => ({ ...s, busy: true, status: undefined }));
+    let result;
+    if (id === "install") result = await installGpuTasks();
+    else result = await runGpuTask(id);
+    const installed = await taskInstalled(APPLY_TASK);
+    setScripts((s) => ({
+      ...s,
+      busy: false,
+      status: result.ok ? result.message : `failed: ${result.message}`,
+      installed,
+    }));
+    setGpu(probeGpu());
   }, []);
 
   const benchTargets = (): ResolvedConfig[] => {
@@ -175,7 +208,10 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       }
       // Live view stays usable while the bench runs.
       else if (input === "v" || (key.meta && input === "v")) setShowOutput((v) => !v);
-      else if (key.pageUp || key.pageDown) outputScrollRef.current += key.pageDown ? 10 : -10;
+      else if (key.pageUp || key.pageDown) {
+        const c = outputScrollControls();
+        outputScrollRef.current = Math.max(0, outputScrollRef.current + (key.pageUp ? c.up : c.down));
+      }
       return;
     }
 
@@ -191,6 +227,17 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
         const cur = vals[filterCursor];
         if (cur) toggleFilterValue(cur.facet, cur.value);
         return;
+      }
+      return;
+    }
+
+    if (scripts.open) {
+      if (key.escape) { setScripts((s) => ({ ...s, open: false })); return; }
+      if (key.upArrow) { setScripts((s) => ({ ...s, cursor: Math.max(0, s.cursor - 1) })); return; }
+      if (key.downArrow) { setScripts((s) => ({ ...s, cursor: Math.min(SCRIPT_ACTIONS.length - 1, s.cursor + 1) })); return; }
+      if (key.return) {
+        const action = SCRIPT_ACTIONS[scripts.cursor];
+        if (action && !scripts.busy) void runScriptAction(action.id);
       }
       return;
     }
@@ -217,9 +264,21 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       return;
     }
 
-    if (filterText.length > 0 && !key.backspace && !key.delete && input.length === 0 && !key.upArrow && !key.downArrow) {
-      // typing filter text handled below
+    if (showSources) {
+      if (key.escape || input === "m") setShowSources(false);
+      return;
     }
+
+    // Filter-typing mode (entered with /): all printable input edits the
+    // filter; hotkeys stay dead until esc/enter leaves the mode. Without this
+    // split, typing "qwen" presses q and quits the app.
+    if (filterMode) {
+      if (key.escape || key.return) { setFilterMode(false); return; }
+      if (key.backspace || key.delete) { setFilterText((t) => t.slice(0, -1)); return; }
+      if (input.length === 1 && /[a-zA-Z0-9._-]/.test(input)) setFilterText((t) => t + input);
+      return;
+    }
+
     if (key.upArrow) {
       const next = Math.max(0, viewRef.current.selected - 1);
       viewRef.current = { ...viewRef.current, selected: next };
@@ -229,12 +288,15 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       viewRef.current = { ...viewRef.current, selected: next };
       setSelected(next);
     }
-    else if (key.backspace || key.delete) setFilterText((t) => t.slice(0, -1));
+    else if (key.pageUp || key.pageDown) {
+      const c = outputScrollControls();
+      outputScrollRef.current = Math.max(0, outputScrollRef.current + (key.pageUp ? c.up : c.down));
+    }
     else if (key.return) {
       const cfg = viewRef.current.rows[viewRef.current.selected];
       if (cfg) void doLaunch(cfg);
     }
-    else if (input === "/") setFilterText("");
+    else if (input === "/") { setFilterText(""); setFilterMode(true); }
     else if (input === "f") setShowFilters(true);
     else if (input === "s") setSortIdx((i) => (i + 1) % SORT_KEYS.length);
     else if (input === "v" || (key.meta && input === "v")) setShowOutput((v) => !v);
@@ -247,8 +309,8 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     else if (input === "t") cycleThink(viewRef.current.rows[viewRef.current.selected]?.name ?? "");
     else if (input === "b") setBench((b) => ({ ...b, open: !b.open }));
     else if (input === "m") setShowSources((v) => !v);
+    else if (input === "g") void openScripts();
     else if (input === "q") void quit();
-    else if (input.length === 1 && /[a-zA-Z0-9._-]/.test(input)) setFilterText((t) => t + input);
   });
 
   const cycleThink = (name: string): void => {
@@ -315,10 +377,10 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       </Box>
       {parseErrors.map((e) => <Text key={e} color="red">✗ {e}</Text>)}
       <ConfigList rows={rows} selected={selected} />
-      {filterText && <Text>filter: /{filterText}_</Text>}
+      {(filterText || filterMode) && <Text>filter: /{filterText}{filterMode ? "_" : ""}</Text>}
       <Text dimColor>
         {helpFor(
-          { filters: showFilters, benchOpen: bench.open, benchRunning: bench.running, sources: showSources },
+          { filters: showFilters, benchOpen: bench.open, benchRunning: bench.running, sources: showSources, scripts: scripts.open },
           rows.length,
           configs.length,
           sortLabel,
@@ -343,21 +405,26 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
         />
       )}
       {showSources && <Sources roots={props.appCfg.model_roots} rows={configs} />}
+      {scripts.open && (
+        <Scripts
+          gpu={gpu}
+          cursor={scripts.cursor}
+          busy={scripts.busy}
+          installed={scripts.installed}
+          status={scripts.status}
+        />
+      )}
     </Box>
   );
 }
 
-function helpFor(mode: { filters: boolean; benchOpen: boolean; benchRunning: boolean; sources: boolean }, rowCount: number, total: number, sortLabel: string): string {
+function helpFor(mode: { filters: boolean; benchOpen: boolean; benchRunning: boolean; sources: boolean; scripts: boolean }, rowCount: number, total: number, sortLabel: string): string {
   if (mode.benchRunning) return "esc abort · v output · o open last report";
   if (mode.benchOpen) return "↑/↓ field · ←→ change · enter start · esc close";
   if (mode.filters) return "a-z toggle facet · c clear · esc done";
+  if (mode.scripts) return "↑/↓ action · enter run · esc close";
   if (mode.sources) return "esc close";
-  return `${rowCount}/${total} shown · sort ${sortLabel} · enter launch · / filter · f facets · s sort · b bench · v output · x stop · l relaunch · space pick · t think · m sources · q quit`;
-}
-
-function serverUrlOf(appCfg: AppConfig): string {
-  const host = appCfg.server.host === "0.0.0.0" ? "127.0.0.1" : appCfg.server.host;
-  return `http://${host}:${appCfg.server.port}`;
+  return `${rowCount}/${total} shown · sort ${sortLabel} · enter launch · / filter · f facets · s sort · b bench · v output · x stop · l relaunch · t think · m sources · g scripts · q quit`;
 }
 
 function latestBenchDir(): string | undefined {
@@ -383,6 +450,9 @@ export async function runTui(): Promise<void> {
       errors.push(`${c.name}: ${e instanceof Error ? e.message.split("\n")[0] : String(e)}`);
     }
   }
+  const profile = await applyGpuProfile();
+  if (!profile.ok) errors.push(`gpu profile: ${profile.message}`);
+
   const { waitUntilExit } = render(<App appCfg={appCfg} configs={resolved} errors={errors} />);
   await waitUntilExit();
 }

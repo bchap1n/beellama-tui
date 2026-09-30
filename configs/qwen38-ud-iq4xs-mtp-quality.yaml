@@ -1,0 +1,30 @@
+# 160K ctx, q8_0 KV (quality floor), b2048/ub256, think ON (medium), MTP n=4
+#
+# Qwen3.8-27B UD-IQ4_XS (Unsloth Dynamic v3.0) — 13.3 GiB, the smaller of the
+# two new quants, so it buys ~16K more context than Qwopus at the same q8_0 KV
+# quality floor. MTP head baked in (blk.64.nextn.*).
+# Unlike Qwopus, this template DOES support reasoning_effort and
+# preserve_thinking, so effort is live here. On 12 hard verifiable problems x 3
+# reps: think off 97% (35/36), effort low 100% (36/36), effort high 100% (36/36)
+# — saturated, so effort mainly trades reasoning length, not score. medium is
+# the repo's flagship quality setting and sits between the two measured points.
+# VRAM: 12.75 GiB model + 5.31 q8_0 KV + 0.63 draft KV + 0.73 RS + 0.74 compute
+# = ~22.3 GiB, ~2.0 GiB free after a 130K prefill (measured). 180224 still
+# loads but leaves only ~0.8 GiB -- not worth the risk on this card.
+name: qwen38-ud-iq4xs-mtp-quality
+label: Qwen3.8-27B UD-IQ4_XS MTP Quality
+description: 160K q8_0 KV, think on (medium), MTP n=4, 13.3 GiB model
+tags: [quality]
+build: beellama
+model: { gguf: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-IQ4_XS.gguf" }
+spec: { type: draft-mtp, draft_max: 4 }
+ctx_size: 163840
+batch: 2048
+ubatch: 256
+cache_k: q8_0
+cache_v: q8_0
+reasoning: true
+reasoning_effort: medium
+sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+max_tokens: 12288

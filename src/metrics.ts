@@ -8,7 +8,28 @@ const POLL_MS = 5000;
 export async function fetchMetrics(url: string): Promise<MetricsSnapshot> {
   const res = await fetch(`${url}/metrics`, { signal: AbortSignal.timeout(3000) });
   if (!res.ok) throw new Error(`/metrics returned ${res.status}`);
-  return (await res.json()) as MetricsSnapshot;
+  const text = await res.text();
+  // llama.cpp serves Prometheus text (llamacpp:<name> <value>); accept a JSON
+  // body too so older stubs and proxies keep working.
+  if (text.trimStart().startsWith("{")) return JSON.parse(text) as MetricsSnapshot;
+  return parsePrometheus(text);
+}
+
+function parsePrometheus(text: string): MetricsSnapshot {
+  const vals: Record<string, number> = {};
+  for (const line of text.split("\n")) {
+    const m = /^llamacpp:([a-z0-9_]+)\s+([0-9.eE+-]+)\s*$/i.exec(line.trim());
+    if (m) vals[m[1]] = Number(m[2]);
+  }
+  return {
+    prompt_tokens_total: vals.prompt_tokens_total ?? 0,
+    tokens_predicted_total: vals.tokens_predicted_total ?? 0,
+    prompt_seconds_total: vals.prompt_seconds_total ?? 0,
+    tokens_predicted_seconds_total: vals.tokens_predicted_seconds_total ?? 0,
+    spec_decode_num_draft_tokens_total: vals.spec_decode_num_draft_tokens_total ?? 0,
+    spec_decode_num_accepted_tokens_total: vals.spec_decode_num_accepted_tokens_total ?? 0,
+    n_decode_total: vals.n_decode_total ?? 0,
+  };
 }
 
 export function deltaTokPerSec(prev: number, now: number, dtSec: number): number {

@@ -9,7 +9,8 @@ const DEFAULTS: AppConfig = {
   model_roots: ["D:/.lmstudio/models", "C:/Users/brock/.lmstudio/models"],
   server: { host: "127.0.0.1", port: 8082 },
   configs_dir: "configs",
-  gpu_power_limit_watts: 250,
+  gpu_power_limit_watts: 280,
+  gpu_clock_mhz: 0,
   benchmark: {
     runs: 3,
     max_tokens: 2048,

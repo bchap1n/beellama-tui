@@ -12,10 +12,10 @@ const QUANT_RE =
 const TOP_KEYS = new Set([
   "name", "label", "description", "tags", "build", "model", "draft", "spec",
   "ctx_size", "batch", "ubatch", "cache_k", "cache_v", "kv_tail_tokens",
-  "kv_unified", "cache_quant", "draft_mode", "ngl", "flash_attn", "no_mmap", "mlock", "reasoning",
+  "kv_unified", "cache_quant", "draft_mode", "draft_dir", "ngl", "flash_attn", "no_mmap", "mlock", "reasoning",
   "reasoning_effort", "sampling", "extra_args", "port", "env", "max_tokens",
 ]);
-const MODEL_KEYS = new Set(["gguf", "provider", "mmproj", "dir"]);
+const MODEL_KEYS = new Set(["gguf", "provider", "mmproj", "mmproj_gpu", "dir"]);
 const SPEC_KEYS = new Set(["type", "draft_max", "cross_ctx"]);
 const SAMPLING_KEYS = new Set(["temp", "top_p", "top_k", "min_p", "presence_penalty", "repeat_penalty"]);
 
@@ -24,7 +24,13 @@ export const DEFAULT_BATCH = 2048;
 export const DEFAULT_UBATCH = 256;
 export const DEFAULT_CACHE = "turbo4";
 
-export class ConfigError extends Error {}
+// Model id every engine advertises over the OpenAI API. omp's llama.cpp
+// runtime discovery matches this id against its `llama.cpp/localmodel` entry to
+// pick up the live context window (`meta.n_ctx` / `--ctx-size`), so llama-server
+// (`--alias`) and exllamav3 (`MODEL_ALIAS` env) must agree on one name.
+export const MODEL_ALIAS = "localmodel";
+
+export class ConfigError extends Error { }
 
 function err(file: string, path: string, msg: string): never {
   throw new ConfigError(`${file}: ${path} ${msg}`);
@@ -98,6 +104,7 @@ export function parseLaunchConfig(text: string, file: string): LaunchConfig {
   }
   if (modelRaw.provider !== undefined) cfg.model.provider = asString(modelRaw.provider, file, "model.provider");
   if (modelRaw.mmproj !== undefined) cfg.model.mmproj = asString(modelRaw.mmproj, file, "model.mmproj");
+  if (modelRaw.mmproj_gpu !== undefined) cfg.model.mmproj_gpu = asBool(modelRaw.mmproj_gpu, file, "model.mmproj_gpu");
 
   if (raw.draft !== undefined) {
     if (!isRecord(raw.draft)) err(file, "draft", "must be a mapping");
@@ -125,6 +132,7 @@ export function parseLaunchConfig(text: string, file: string): LaunchConfig {
       err(file, "draft_mode", "must be mtp, dflash2, or none");
     cfg.draft_mode = dm;
   }
+  if (raw.draft_dir !== undefined) cfg.draft_dir = asString(raw.draft_dir, file, "draft_dir");
   if (raw.cache_k !== undefined) cfg.cache_k = asString(raw.cache_k, file, "cache_k");
   if (raw.cache_v !== undefined) cfg.cache_v = asString(raw.cache_v, file, "cache_v");
   if (raw.kv_tail_tokens !== undefined) cfg.kv_tail_tokens = asNumber(raw.kv_tail_tokens, file, "kv_tail_tokens");
@@ -259,7 +267,8 @@ export function buildArgs(cfg: LaunchConfig, host: string, port: number): string
   if (!cfg.model.gguf) throw new ConfigError("buildArgs: llama-server builds require model.gguf");
 
   if (cfg.model.mmproj) {
-    args.push("--mmproj", cfg.model.mmproj, "--no-mmproj-offload");
+    args.push("--mmproj", cfg.model.mmproj);
+    if (cfg.model.mmproj_gpu !== true) args.push("--no-mmproj-offload");
   }
 
   const specType = cfg.spec?.type;
@@ -272,6 +281,7 @@ export function buildArgs(cfg: LaunchConfig, host: string, port: number): string
   }
 
   args.push("--port", String(cfg.port || port), "--host", host);
+  args.push("--alias", MODEL_ALIAS);
   args.push("-np", "1");
   if (cfg.kv_unified !== false) args.push("--kv-unified");
   args.push("-ngl", String(cfg.ngl));

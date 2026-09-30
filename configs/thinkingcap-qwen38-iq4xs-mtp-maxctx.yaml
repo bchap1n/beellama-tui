@@ -1,0 +1,34 @@
+# 262K ctx (native max), kvarn4 K / kvarn3 V + 1024-token exact tail,
+# b2048/ub256, think ON (high), MTP n=4
+#
+# BottlecapAI ThinkingCap tune of Qwen3.8-27B IQ4_XS -- same arch. Weights
+# 14.41 GiB on disk, matching the huihui sibling (14.40) verified live at 262K.
+# Measured live 2026-09-23 at 262144: ~965 MiB free quiet GPU (~3 GiB other
+# consumers); busy session = drop ctx or wait.
+#
+# TEMPLATE OVERRIDE REQUIRED: the GGUF's embedded chat template breaks this
+# build's minja ("cannot use null as iterable") on EVERY request, even at its
+# default xhigh -- and it rejects reasoning_effort "high" entirely. The proven
+# unsloth Qwen3.8 template (configs/qwen38-ud-chat-template.jinja, extracted
+# from the UD-IQ4_XS GGUF) renders fine and maps high -> xhigh.
+#
+# --reasoning-budget caps hidden thinking at 8192 tokens (sampler-level).
+# Raise it, do not remove it.
+name: thinkingcap-qwen38-iq4xs-mtp-maxctx
+label: ThinkingCap Qwen3.8-27B IQ4_XS MTP MaxCtx
+description: 262K kvarn KV (native max), think on (high), MTP n=4
+tags: [maxctx]
+build: beellama
+model: { gguf: "D:/.lmstudio/models/bottlecapai/ThinkingCap-Qwen3.8-27B-IQ4_XS.gguf" }
+spec: { type: draft-mtp, draft_max: 4 }
+ctx_size: 262144
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+reasoning_effort: high
+sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
+extra_args: ["--reasoning-budget", "8192", "--chat-template-file", "C:/Users/brock/Documents/github/beellama-tui/configs/qwen38-ud-chat-template.jinja", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+max_tokens: 12288

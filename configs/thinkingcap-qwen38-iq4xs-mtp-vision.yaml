@@ -1,0 +1,38 @@
+# 160K ctx, kvarn4 K / kvarn3 V + 1024-token exact tail, b2048/ub256,
+# vision ON (mmproj f16 on GPU), think ON (high), MTP n=4
+#
+# Vision tower: bottlecapai mmproj-ThinkingCap-Qwen3.8-27B-f16 is VALUE-IDENTICAL
+# to the proven unsloth mmproj-BF16 (334 tensors, 224 F32 + 110 BF16, 0
+# differing elements) -- same tower, same size; keep the family's own file.
+# mmproj_gpu: true omits --no-mmproj-offload (encoder on GPU, beellama 0.4.7).
+#
+# TEMPLATE OVERRIDE REQUIRED: same as the text sibling (broken embedded minja
+# template, rejects "high"); unsloth template is VL-capable (render_content
+# handles image items). 160K rung copied from the qwopus vision sibling --
+# 262K + GPU encoder does not fit on this card. Measured live 2026-09-23 at
+# 163840 with encoder on GPU: ~2.0 GiB free quiet (~3 GiB other consumers),
+# image prefill served at 48.7 tok/s.
+#
+# --reasoning-budget caps hidden thinking at 8192 tokens (sampler-level).
+# Raise it, do not remove it.
+name: thinkingcap-qwen38-iq4xs-mtp-vision
+label: ThinkingCap Qwen3.8-27B IQ4_XS MTP Vision
+description: 160K kvarn KV, mmproj f16 on GPU, think on (high), MTP n=4
+tags: [vision]
+build: beellama
+model:
+  gguf: "D:/.lmstudio/models/bottlecapai/ThinkingCap-Qwen3.8-27B-IQ4_XS.gguf"
+  mmproj: "D:/.lmstudio/models/bottlecapai/mmproj-ThinkingCap-Qwen3.8-27B-f16.gguf"
+  mmproj_gpu: true
+spec: { type: draft-mtp, draft_max: 4 }
+ctx_size: 163840
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+reasoning_effort: high
+sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
+extra_args: ["--reasoning-budget", "8192", "--chat-template-file", "C:/Users/brock/Documents/github/beellama-tui/configs/qwen38-ud-chat-template.jinja", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+max_tokens: 12288

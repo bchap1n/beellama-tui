@@ -1,0 +1,21 @@
+# 128K ctx (fits 3090: 5.1GB weights, MoE 1.5B active), card sampling.
+# DSpark spec decoding on. Measured on this box: acceptance 0.27 (908/3312,
+# mean run 3.19) at 96.6 t/s vs 113 t/s spec-free on this prompt mix.
+# SGLang claims ~2.5x; beellama.cpp acceptance is lower, so spec is a
+# throughput loss here. Drop the draft/spec keys if raw speed matters more.
+# max_tokens 12288: thinking model; benchmark runs hit the 4096 global cap on
+# reasoning+code and truncated (FinishReason length, 23-27 t/s median).
+name: lfm25-8b-a1b
+label: LFM2.5-8B-A1B DSpark
+description: LiquidAI LFM2.5-8B-A1B Q4_K_M + DSpark drafter, 128K ctx, card sampling
+build: beellama
+model: { gguf: "D:/.lmstudio/models/liquidai/LFM2.5-8B-A1B-Q4_K_M.gguf" }
+draft: { gguf: "D:/.lmstudio/models/liquidai/LFM2.5-8B-A1B-DSpark-Q4_K_M.gguf" }
+spec: { type: draft-dspark, draft_max: 8 }
+ctx_size: 131072
+batch: 4096
+ubatch: 512
+reasoning: true
+max_tokens: 12288
+sampling: { temp: 0.2, top_k: 80, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.05 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

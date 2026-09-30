@@ -7,7 +7,7 @@ import { resolveBinary } from "../binary.ts";
 import { deriveFacets, resolveConfig } from "../launch-config.ts";
 import { launchServer, stopServer, waitForHealth } from "../server.ts";
 import { fetchMetrics } from "../metrics.ts";
-import { loadPromptSet } from "./prompts.ts";
+import { loadPromptSet, type SetName } from "./prompts.ts";
 import type { BenchResultRow, QualityResult, ResolvedConfig } from "../types.ts";
 import { runQualityAnalysis } from "./quality.ts";
 import type { BenchCliOpts } from "../cli.ts";
@@ -133,7 +133,7 @@ export async function runBenchmark(
   configsOverride?: ResolvedConfig[],
 ): Promise<number> {
   const appCfg = await loadAppConfig();
-  const setName = (opts.set as "standard" | "coding" | "longctx") ?? "standard";
+  const setName = (opts.set as SetName | undefined) ?? "standard";
   const prompts = await loadPromptSet(setName);
   const bench = appCfg.benchmark;
   const runs = opts.runs ?? bench.runs;
@@ -163,16 +163,18 @@ export async function runBenchmark(
   const contents: { config: string; prompt: string; type: string; content: string; reasoning: string; finishReason: string; completionTokens: number }[] = [];
   const failures: string[] = [];
 
-  const baseUrl = opts.url ?? serverUrl(appCfg);
   for (let ci = 0; ci < resolvedList.length; ci++) {
     if (shouldAbort?.()) break;
     const rc = resolvedList[ci];
+    // Each config may pin its own port; every HTTP call must target that port.
+    const baseUrl = opts.url ?? serverUrl(appCfg, rc.port);
     const facets = deriveFacets(rc, appCfg.model_roots);
     onProgress?.({ configIndex: ci, configCount: resolvedList.length, configName: rc.name, promptIndex: 0, promptCount: prompts.length, runIndex: 0, runCount: runs, tokPerSec: 0, phase: "starting" });
 
     // A manually-launched server would otherwise answer for every config;
     // port-owner kill also clears kit-launcher orphans from prior runs.
-    await stopServer(rc.port || appCfg.server.port);
+    // With --url the server is remote and not ours to kill.
+    if (!opts.url) await stopServer(rc.port || appCfg.server.port);
     if (!opts.url) {
       try {
         await launchServer(rc, appCfg);
@@ -251,7 +253,7 @@ export async function runBenchmark(
     }
 
     onProgress?.({ configIndex: ci, configCount: resolvedList.length, configName: rc.name, promptIndex: prompts.length, promptCount: prompts.length, runIndex: runs, runCount: runs, tokPerSec: 0, phase: "stopping" });
-    await stopServer(rc.port || appCfg.server.port);
+    if (!opts.url) await stopServer(rc.port || appCfg.server.port);
     if (bench.config_cooldown_sec > 0 && ci < resolvedList.length - 1 && !shouldAbort?.()) {
       await Bun.sleep(bench.config_cooldown_sec * 1000);
     }
@@ -261,10 +263,14 @@ export async function runBenchmark(
   // Quality analysis: one graded sample per config+prompt pair, applied to
   // every run row of that pair. Only Code/Coding prompts carry gradable output.
   // Grade content only - reasoning stays out of the graded sample.
+  // A run that hit the token cap is excluded: its answer is cut off or absent,
+  // so a grade would report the cap, not the model. It is still persisted
+  // below - a capped sample is the only evidence of what went wrong.
   const qaIdx = new Map<string, number>();
   const codeSamples: { prompt: string; content: string }[] = [];
   for (const c of contents) {
     if (c.type !== "Code" && c.type !== "Coding") continue;
+    if (c.finishReason === "length") continue;
     const key = `${c.config}/${c.prompt}`;
     if (!qaIdx.has(key)) {
       qaIdx.set(key, codeSamples.length);
@@ -286,12 +292,18 @@ export async function runBenchmark(
     }
   }
 
-  // Persist the graded sample of every config+prompt pair so re-grading with a
-  // better extractor needs no re-run. Skip servers that report no usage (their
-  // token counts are estimates only).
+  // Persist one sample per config+prompt pair so re-grading with a better
+  // extractor needs no re-run. A complete answer wins over a capped one, but a
+  // capped pair is persisted too: dropping it leaves no evidence of the miss.
   const persisted: { config: string; prompt: string; type: string; content: string; reasoning: string; finishReason: string }[] = [];
+  const byPair = new Map<string, (typeof contents)[number]>();
   for (const c of contents) {
-    if (!qaIdx.has(`${c.config}/${c.prompt}`)) continue;
+    if (c.type !== "Code" && c.type !== "Coding") continue;
+    const key = `${c.config}/${c.prompt}`;
+    const prev = byPair.get(key);
+    if (!prev || (prev.finishReason === "length" && c.finishReason !== "length")) byPair.set(key, c);
+  }
+  for (const c of byPair.values()) {
     persisted.push({ config: c.config, prompt: c.prompt, type: c.type, content: c.content, reasoning: c.reasoning, finishReason: c.finishReason });
   }
   if (persisted.length > 0) {
@@ -316,11 +328,11 @@ export async function runBenchmark(
       // ignore
     }
   }
-  return 0;
+  return failures.length > 0 ? 1 : 0;
 }
 
-function serverUrl(appCfg: { server: { host: string; port: number } }): string {
+function serverUrl(appCfg: { server: { host: string; port: number } }, port?: number): string {
   const host = appCfg.server.host === "0.0.0.0" ? "127.0.0.1" : appCfg.server.host;
-  return `http://${host}:${appCfg.server.port}`;
+  return `http://${host}:${port ?? appCfg.server.port}`;
 }
 

@@ -10,11 +10,14 @@ export interface LaunchConfig {
     gguf?: string;
     provider?: string;
     mmproj?: string;
+    /** Offload the multimodal projector to GPU (default false = --no-mmproj-offload). */
+    mmproj_gpu?: boolean;
     dir?: string;
   };
   draft?: { gguf: string };
   cache_quant?: string;
   draft_mode?: "mtp" | "dflash2" | "none";
+  draft_dir?: string;
   ctx_size?: number;
   spec?: { type: string; draft_max?: number; cross_ctx?: number };
   batch?: number;
@@ -71,6 +74,7 @@ export interface AppConfig {
   configs_dir: string;
   binaries?: Record<string, string>;
   gpu_power_limit_watts?: number;
+  gpu_clock_mhz?: number;
   benchmark: {
     runs: number;
     max_tokens: number;

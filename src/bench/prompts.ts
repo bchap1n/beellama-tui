@@ -20,9 +20,9 @@ export interface PromptDef {
   expect?: string; // LongContext grading: substring the answer must contain (case-insensitive)
 }
 
-export type SetName = "standard" | "coding" | "longctx";
+export type SetName = "standard" | "coding" | "longctx" | "all";
 
-const SET_FILES: Record<SetName, string> = {
+const SET_FILES: Record<Exclude<SetName, "all">, string> = {
   standard: "prompts.json",
   coding: "prompts-coding.json",
   longctx: "prompts-longctx.json",
@@ -30,6 +30,10 @@ const SET_FILES: Record<SetName, string> = {
 
 
 export async function loadPromptSet(set: SetName): Promise<PromptDef[]> {
+  if (set === "all") {
+    const sets = await Promise.all([loadPromptSet("standard"), loadPromptSet("coding"), loadPromptSet("longctx")]);
+    return sets.flat();
+  }
   const raw = JSON.parse(await readFile(appFile("prompts", SET_FILES[set]), "utf8")) as PromptDef[];
   if (set === "longctx") return expandLongCtx(raw, await loadHaystackSeed());
   return raw;

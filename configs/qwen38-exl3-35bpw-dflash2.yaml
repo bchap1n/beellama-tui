@@ -1,9 +1,10 @@
-# 192K ctx, nvfp4 KV, DFlash2 draft — EXL3 via Mia deployment kit (spawnExllamav3
+# 96K ctx, nvfp4 KV, DFlash2 draft — EXL3 via Mia deployment kit (spawnExllamav3
 # forwards only MODEL_DIR/HOST/PORT/CONTEXT_SIZE/CACHE_QUANT/DRAFT; a spec block
-# here would be ignored). Kit .env budget on a 24 GB card: 15.3 GB target weights
-# (3.5bpw) + 1.4 GB dedicated draft + ~23 KB/token KV at nvfp4 (~18 target + ~5
-# draft) => ~5.3 GB headroom => dflash2 tops out ~220k. 192K (~4.3 GB KV) matches
-# the MTP config convention and leaves margin.
+# here would be ignored). Measured on a 24 GB card: 15.3 GB target weights (3.5bpw)
+# + 1.4 GB dedicated draft + ~25.7 KB/token KV at nvfp4 (target + draft) => at
+# 196608 ctx only ~0.6 GB is free during generation, which crashes the DFlash2
+# spec-decode scratch (draft pages + block tables + Triton temps). 96K (~2.35 GB
+# KV) leaves ~3 GB headroom and is stable.
 name: qwen38-exl3-35bpw-dflash2
 label: Qwen3.8-27B EXL3 3.5bpw DFlash2
 description: 192K nvfp4 KV, 1.4GB DFlash2 draft via exllamav3 kit
@@ -12,9 +13,10 @@ build: exllamav3
 model:
   dir: "D:/.lmstudio/models/exl3/Qwen3.8-27B-EXL3-3.5bpw"
   provider: Mia-AiLab
-ctx_size: 196608
+ctx_size: 98304
 cache_quant: nvfp4
 draft_mode: dflash2
+draft_dir: "D:/.lmstudio/models/exl3/Qwen3.8-27B-DFlash2-EXL3-5.0bpw"
 port: 8082
 env:
   NO_THINKING: "1"

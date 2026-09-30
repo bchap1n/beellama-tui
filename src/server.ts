@@ -1,7 +1,7 @@
 // Server process lifecycle: spawn, health wait, log ring buffer, tree kill.
 import { appendFile, mkdir } from "node:fs/promises";
 import { join, dirname } from "node:path";
-import { buildArgs } from "./launch-config.ts";
+import { buildArgs, MODEL_ALIAS } from "./launch-config.ts";
 import type { AppConfig, ResolvedConfig } from "./types.ts";
 
 export interface RunningServer {
@@ -25,7 +25,7 @@ async function portInUse(host: string, port: number): Promise<boolean> {
     const conn = await Bun.connect({
       hostname: host,
       port,
-      socket: { data() {}, close() {}, error() {} },
+      socket: { data() { }, close() { }, error() { } },
     });
     conn.end();
     return true;
@@ -48,6 +48,8 @@ function spawnExllamav3(resolved: ResolvedConfig, host: string, port: number, en
   };
   if (resolved.cache_quant) cfgEnv.CACHE_QUANT = resolved.cache_quant;
   if (resolved.draft_mode) cfgEnv.DRAFT = resolved.draft_mode;
+  if (resolved.draft_dir) cfgEnv.DRAFT_DIR = resolved.draft_dir;
+  cfgEnv.MODEL_ALIAS = MODEL_ALIAS;
   return Bun.spawn(["pwsh", "-NoProfile", "-File", script], {
     cwd: dirname(script),
     stdout: "pipe",
@@ -64,24 +66,16 @@ export async function launchServer(resolved: ResolvedConfig, appCfg: AppConfig, 
   if (await portInUse(host === "0.0.0.0" ? "127.0.0.1" : host, port)) {
     throw new Error(`Port ${port} is already in use — refusing to start. Stop the other server or change the port.`);
   }
-  if (appCfg.gpu_power_limit_watts) {
-    try {
-      const p = Bun.spawn(["nvidia-smi", "-pl", String(appCfg.gpu_power_limit_watts)], { stdout: "ignore", stderr: "ignore" });
-      await p.exited;
-    } catch {
-      // ignore
-    }
-  }
 
   const env = { ...process.env, ...resolved.env };
   const proc =
     resolved.build === "exllamav3"
       ? spawnExllamav3(resolved, host, port, env)
       : Bun.spawn([resolved.binaryPath, ...buildArgs(resolved, host, port)], {
-          stdout: "pipe",
-          stderr: "pipe",
-          env,
-        });
+        stdout: "pipe",
+        stderr: "pipe",
+        env,
+      });
 
   const ts = new Date().toISOString().replace(/[:T]/g, "-").slice(0, 19);
   await mkdir("logs", { recursive: true });

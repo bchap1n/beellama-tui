@@ -1,15 +1,18 @@
 // Binary resolution: app config override -> beellama run/config.json -> lucebox special case.
 import { existsSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { isAbsolute, join } from "node:path";
 import type { AppConfig } from "./types.ts";
+import { appFile } from "./approot.ts";
 
 export function resolveBinary(buildKey: string, appCfg: AppConfig): string {
   const tried: string[] = [];
 
   const override = appCfg.binaries?.[buildKey];
   if (override) {
-    if (existsSync(override)) return override;
-    tried.push(override);
+    // Relative overrides anchor at the app root, not the caller's cwd.
+    const full = isAbsolute(override) ? override : appFile(override);
+    if (existsSync(full)) return full;
+    tried.push(full);
   }
 
   const repoCfg = join(appCfg.beellama_repo, "run", "config.json");
@@ -64,4 +67,19 @@ export function engineIdentity(buildKey: string, binaryPath: string, _appCfg?: A
     // binary would not identify itself
   }
   return name;
+}
+
+// Harness identity for reports: the OMP build a coding run is measured against.
+// Coding grades come from OMP's PowerShell conventions, so a run means little
+// without the version it targeted. Returns undefined when OMP is not installed.
+export function ompIdentity(): string | undefined {
+  try {
+    const v = Bun.spawnSync(["omp", "--version"], { stdout: "pipe", stderr: "pipe" });
+    const out = (v.stdout.toString() + " " + v.stderr.toString()).trim();
+    if (v.exitCode !== 0 || !out) return undefined;
+    // `omp --version` prints "omp/18.1.15"
+    return out.split(/\r?\n/)[0].trim().replace(/\//, " ");
+  } catch {
+    return undefined;
+  }
 }

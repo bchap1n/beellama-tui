@@ -1,0 +1,30 @@
+# 262K ctx (native max), kvarn4 K / kvarn3 V + 1024-token exact tail,
+# b2048/ub256, think ON (medium), MTP n=4
+#
+# Same model as the quality config; trades KV precision for full context.
+# VRAM: 12.75 GiB model + 3.90 KVarN + 0.06 tail + 1.00 draft KV + 0.73 RS
+# + 0.19 compute = ~20.9 GiB, ~2.6 GiB free (measured) -- the roomiest of the
+# two new quants at 256K.
+#
+# --reasoning-budget caps hidden thinking at 8192 tokens (sampler-level, no
+# template support needed). Normal runs think 1-5K tokens, so the cap never
+# binds in practice; it stops a spiral from eating the whole 12288 answer
+# budget and returning an empty completion. Raise it, do not remove it.
+name: qwen38-ud-iq4xs-mtp-maxctx
+label: Qwen3.8-27B UD-IQ4_XS MTP MaxCtx
+description: 262K kvarn KV (native max), think on (medium), MTP n=4
+tags: [maxctx]
+build: beellama
+model: { gguf: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-IQ4_XS.gguf" }
+spec: { type: draft-mtp, draft_max: 4 }
+ctx_size: 262144
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+reasoning_effort: medium
+sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
+extra_args: ["--reasoning-budget", "8192", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+max_tokens: 12288

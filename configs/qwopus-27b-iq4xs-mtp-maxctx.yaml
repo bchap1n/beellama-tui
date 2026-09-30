@@ -1,0 +1,35 @@
+# 262K ctx (native max), kvarn4 K / kvarn3 V + 1024-token exact tail,
+# b2048/ub256, think ON, MTP n=4
+#
+# Same model as the quality config; trades KV precision for full context.
+# Qwen3.8 hybrid attention is KV-sensitive, so kvarn only for 256K on a 24 GB
+# card. KVarN retains an intrinsic 128-token exact suffix; --kv-tail-tokens 1024
+# adds the BeeLlama Qwen precision tail (64 MiB, independent of ctx).
+# V2 template (7700 chars) carries reasoning_effort but rejects "high"
+# (xhigh/medium/low only, medium default) and dies with "cannot use null as
+# iterable" on any rendered request in this build's minja -- same breakage as
+# ThinkingCap/AP. Override with the proven unsloth template
+# (configs/qwen38-ud-chat-template.jinja, high->xhigh alias), verified live:
+# plain request under launch-high raises correctly, per-request medium
+# renders with thinking.
+# VRAM: 14.36 GiB model (V2, +0.31 over V1) + 3.90 KVarN + 0.06 tail + 1.00
+# draft KV + 0.73 RS + 0.19 compute = ~22.1 GiB, ~0.95 GiB free after load +
+# short smoke (measured 2026-09-23; V1 measured ~1.8 GiB after a 130K prefill,
+# so the longer-prefill number was higher in its quieter session).
+name: qwopus-27b-iq4xs-mtp-maxctx
+label: Qwopus3.8-27B Flash V2 IQ4_XS MTP MaxCtx
+description: 262K kvarn KV (native max), think on, MTP n=4
+tags: [maxctx]
+build: beellama
+model: { gguf: "D:/.lmstudio/models/jackrong/Qwopus3.8-27B-Flash-V2-MTP-IQ4_XS.gguf" }
+spec: { type: draft-mtp, draft_max: 4 }
+ctx_size: 262144
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
+extra_args: ["--reasoning-budget", "8192", "--chat-template-file", "C:/Users/brock/Documents/github/beellama-tui/configs/qwen38-ud-chat-template.jinja", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+max_tokens: 12288
