@@ -10,7 +10,7 @@ import { rowsToCsv, CSV_HEADER, writeReport, analysisVerdict } from "../src/benc
 import { deltaTokPerSec, fetchMetrics } from "../src/metrics.ts";
 import type { BenchResultRow, LaunchConfig } from "../src/types.ts";
 
-const ROOTS = ["D:/.lmstudio/models", "C:/Users/brock/.lmstudio/models"];
+const ROOTS = ["D:/models", "C:/models"];
 
 describe("quant derivation", () => {
   test("compound AD-Q5_K-Q4_K", () => {
@@ -29,13 +29,13 @@ describe("quant derivation", () => {
 
 describe("provider derivation", () => {
   test("nested unsloth path", () => {
-    expect(providerOf("D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/x.gguf", ROOTS)).toBe("unsloth");
+    expect(providerOf("D:/models/unsloth/qwen3.8-27B-gguf/x.gguf", ROOTS)).toBe("unsloth");
   });
   test("flat AtomicChat path", () => {
-    expect(providerOf("D:\\.lmstudio\\models\\AtomicChat\\y.gguf", ROOTS)).toBe("AtomicChat");
+    expect(providerOf("D:\\models\\AtomicChat\\y.gguf", ROOTS)).toBe("AtomicChat");
   });
   test("override wins", () => {
-    expect(providerOf("D:/.lmstudio/models/unsloth/x.gguf", ROOTS, "bartowski")).toBe("bartowski");
+    expect(providerOf("D:/models/unsloth/x.gguf", ROOTS, "bartowski")).toBe("bartowski");
   });
   test("outside roots is unknown", () => {
     expect(providerOf("E:/models/foo/bar.gguf", ROOTS)).toBe("unknown");
@@ -44,7 +44,7 @@ describe("provider derivation", () => {
 
 const SAMPLE_YAML = `
 name: test-cfg
-model: { gguf: "D:/.lmstudio/models/unsloth/repo/Test-27B-UD-Q4_K_M.gguf" }
+model: { gguf: "D:/models/unsloth/repo/Test-27B-UD-Q4_K_M.gguf" }
 spec: { type: draft-mtp, draft_max: 2 }
 ctx_size: 163840
 batch: 4096
@@ -66,7 +66,7 @@ describe("arg builder", () => {
   test("matches migrated script flag style", () => {
     const args = buildArgs(sampleCfg(), "127.0.0.1", 8082);
     const expected = [
-      "-m", "D:/.lmstudio/models/unsloth/repo/Test-27B-UD-Q4_K_M.gguf",
+      "-m", "D:/models/unsloth/repo/Test-27B-UD-Q4_K_M.gguf",
       "--spec-type", "draft-mtp",
       "--spec-draft-n-max", "2",
       "--port", "8082",

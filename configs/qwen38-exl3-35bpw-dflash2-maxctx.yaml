@@ -12,12 +12,12 @@ description: 128K nvfp4 KV, 1.4GB DFlash2 draft via exllamav3 kit
 tags: [exl3, dflash2, maxctx]
 build: exllamav3
 model:
-  dir: "D:/.lmstudio/models/exl3/Qwen3.8-27B-EXL3-3.5bpw"
+  dir: "${BEELLAMA_MODELS}/exl3/Qwen3.8-27B-EXL3-3.5bpw"
   provider: Mia-AiLab
 ctx_size: 131072
 cache_quant: nvfp4
 draft_mode: dflash2
-draft_dir: "D:/.lmstudio/models/exl3/Qwen3.8-27B-DFlash2-EXL3-5.0bpw"
+draft_dir: "${BEELLAMA_MODELS}/exl3/Qwen3.8-27B-DFlash2-EXL3-5.0bpw"
 port: 8082
 env:
   NO_THINKING: "1"

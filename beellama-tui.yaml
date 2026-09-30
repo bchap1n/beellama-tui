@@ -1,8 +1,6 @@
 # beellama-tui app configuration.
-beellama_repo: C:/Users/brock/Documents/github/beellama
-model_roots:
-  - D:/.lmstudio/models
-  - C:/Users/brock/.lmstudio/models
+beellama_repo: ${BEELLAMA_REPO}        # env var: path to the beellama checkout
+model_roots: ${BEELLAMA_MODEL_ROOTS}   # env var: ;-separated model directories
 server:
   host: 127.0.0.1
   port: 8082

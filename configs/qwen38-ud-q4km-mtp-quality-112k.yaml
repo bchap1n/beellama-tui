@@ -4,7 +4,7 @@ label: Qwen3.8-27B UD-Q4_K_M MTP Quality 112k
 description: 114K q8_0 KV, think off, MTP n=2
 tags: [quality]
 build: beellama
-model: { gguf: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_M.gguf" }
+model: { gguf: "${BEELLAMA_MODELS}/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_M.gguf" }
 spec: { type: draft-mtp, draft_max: 2 }
 ctx_size: 114688
 batch: 2048

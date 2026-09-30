@@ -3,7 +3,7 @@ name: lfm25-350m
 label: LFM2.5-350M QAD-Q4_0
 description: LiquidAI LFM2.5-350M QAD-Q4_0 (distilled quant), 32K ctx, card sampling
 build: beellama
-model: { gguf: "D:/.lmstudio/models/liquidai/LFM2.5-350M-QAD-Q4_0.gguf" }
+model: { gguf: "${BEELLAMA_MODELS}/liquidai/LFM2.5-350M-QAD-Q4_0.gguf" }
 ctx_size: 32768
 batch: 4096
 ubatch: 512

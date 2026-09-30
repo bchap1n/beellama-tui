@@ -3,7 +3,7 @@ name: lfm25-2.6b
 label: LFM2.5-2.6B QAD-Q4_0
 description: LiquidAI LFM2.5-2.6B QAD-Q4_0 (distilled quant), 131K ctx, card sampling
 build: beellama
-model: { gguf: "D:/.lmstudio/models/liquidai/LFM2.5-2.6B-QAD-Q4_0.gguf" }
+model: { gguf: "${BEELLAMA_MODELS}/liquidai/LFM2.5-2.6B-QAD-Q4_0.gguf" }
 ctx_size: 131072
 batch: 4096
 ubatch: 512

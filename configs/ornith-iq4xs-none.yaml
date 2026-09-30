@@ -3,7 +3,7 @@ name: ornith-iq4xs-none
 label: Ornith-1.5-35B-A3B IQ4_XS
 description: 131K kvarn KV, think on, no spec
 build: beellama
-model: { gguf: "D:/.lmstudio/models/AtomicChat/Ornith-1.5-35B-A3B-IQ4_XS.gguf", provider: AtomicChat }
+model: { gguf: "${BEELLAMA_MODELS}/AtomicChat/Ornith-1.5-35B-A3B-IQ4_XS.gguf", provider: AtomicChat }
 ctx_size: 131072
 batch: 2048
 ubatch: 256

@@ -1,5 +1,11 @@
 // Integration: benchmark runner against a stub llama-server (no real binary/GPU).
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+
+// runBenchmark loads beellama-tui.yaml, whose path fields expand ${VAR}s.
+// Fill them so the suite runs on hosts without the user's environment (CI).
+process.env.BEELLAMA_REPO ??= ".";
+process.env.BEELLAMA_MODEL_ROOTS ??= ".";
+process.env.BEELLAMA_MODELS ??= ".";
 import { runBenchmark } from "../src/bench/runner.ts";
 import { CSV_HEADER } from "../src/bench/report.ts";
 import { parseLaunchConfig } from "../src/launch-config.ts";

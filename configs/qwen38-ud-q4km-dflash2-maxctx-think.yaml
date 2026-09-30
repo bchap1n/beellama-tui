@@ -8,8 +8,8 @@ label: Qwen3.8-27B UD-Q4_K_M DFlash2 MaxCtx Think
 description: 262K kvarn KV (native max), think on (high), DFlash2 n=15
 tags: [maxctx]
 build: beellama
-model: { gguf: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_M.gguf" }
-draft: { gguf: "D:/.lmstudio/models/anbeeld/Qwen3.8-27B-DFlash2-Q4_K_M.gguf" }
+model: { gguf: "${BEELLAMA_MODELS}/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_M.gguf" }
+draft: { gguf: "${BEELLAMA_MODELS}/anbeeld/Qwen3.8-27B-DFlash2-Q4_K_M.gguf" }
 spec: { type: draft-dflash, draft_max: 15 }
 ctx_size: 262144
 batch: 4096

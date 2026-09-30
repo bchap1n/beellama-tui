@@ -15,7 +15,7 @@ label: Qwen3.8-27B UD-IQ4_XS MTP MaxCtx
 description: 262K kvarn KV (native max), think on (medium), MTP n=4
 tags: [maxctx]
 build: beellama
-model: { gguf: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-IQ4_XS.gguf" }
+model: { gguf: "${BEELLAMA_MODELS}/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-IQ4_XS.gguf" }
 spec: { type: draft-mtp, draft_max: 4 }
 ctx_size: 262144
 batch: 2048

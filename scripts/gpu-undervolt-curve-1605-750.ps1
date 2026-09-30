@@ -55,7 +55,7 @@ param(
     [int]$PowerLimit = 300,
     [int]$Millivolts = 750,
     [int]$ClockMhz = 1605,
-    [string]$ToolPath = 'C:\Users\brock\tools\simple-nvidia-undervolt\simple-nvidia-undervolt.exe'
+    [string]$ToolPath = $(if ($env:SNU_PATH) { $env:SNU_PATH } else { "$env:USERPROFILE\tools\simple-nvidia-undervolt\simple-nvidia-undervolt.exe" })
 )
 
 $ErrorActionPreference = 'Stop'

@@ -22,8 +22,8 @@ description: 160K kvarn KV, mmproj BF16 on GPU, think off, MTP n=4
 tags: [vision]
 build: beellama
 model:
-  gguf: "D:/.lmstudio/models/jackrong/Qwopus3.8-27B-Flash-V2-MTP-IQ4_XS.gguf"
-  mmproj: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/mmproj-BF16.gguf"
+  gguf: "${BEELLAMA_MODELS}/jackrong/Qwopus3.8-27B-Flash-V2-MTP-IQ4_XS.gguf"
+  mmproj: "${BEELLAMA_MODELS}/unsloth/qwen3.8-27B-gguf/mmproj-BF16.gguf"
   mmproj_gpu: true
 spec: { type: draft-mtp, draft_max: 4 }
 ctx_size: 163840
@@ -34,4 +34,4 @@ cache_v: kvarn3
 kv_tail_tokens: 1024
 reasoning: false
 sampling: { temp: 0.7, top_p: 0.80, top_k: 20, min_p: 0.0, presence_penalty: 1.5, repeat_penalty: 1.0 }
-extra_args: ["--chat-template-file", "C:/Users/brock/Documents/github/beellama-tui/configs/qwen38-ud-chat-template.jinja", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+extra_args: ["--chat-template-file", "${APP_ROOT}/configs/qwen38-ud-chat-template.jinja", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

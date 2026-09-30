@@ -165,5 +165,11 @@ export async function main(argv: string[]): Promise<number> {
 }
 
 if (import.meta.main) {
-  process.exitCode = await main(process.argv.slice(2));
+  try {
+    process.exitCode = await main(process.argv.slice(2));
+  } catch (e) {
+    // A thrown config/env error prints its message, not a stack trace.
+    console.error(e instanceof Error ? e.message : String(e));
+    process.exitCode = 1;
+  }
 }

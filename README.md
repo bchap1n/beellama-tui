@@ -27,10 +27,9 @@ beellama-tui bench --config <name> [--set standard|coding|longctx] [--runs N] [-
 `beellama-tui.yaml` (repo root):
 
 ```yaml
-beellama_repo: C:/Users/brock/Documents/github/beellama
-model_roots:                 # multiple sources; provider = first path segment under a root
-  - D:/.lmstudio/models
-  - C:/Users/brock/.lmstudio/models
+beellama_repo: ${BEELLAMA_REPO}        # env var: path to the beellama checkout
+model_roots: ${BEELLAMA_MODEL_ROOTS}   # env var: ;-separated model directories
+                                       # provider = first path segment under a root
 server: { host: 127.0.0.1, port: 8082 }
 configs_dir: configs
 gpu_power_limit_watts: 280   # powerlimit task only; baked in by the installer, not read at TUI start
@@ -46,6 +45,28 @@ benchmark:
   timeout_sec: 180
 ```
 
+## Environment variables
+
+Path fields in `beellama-tui.yaml` and `configs/*.yaml` expand `${VAR}` from
+the environment, plus the built-in `${APP_ROOT}` (the repo root). A missing
+var fails the load and names the file and field — check the error, set the
+var, run again.
+
+| Var | Holds |
+|---|---|
+| `BEELLAMA_REPO` | Path to the beellama checkout (binary discovery) |
+| `BEELLAMA_MODEL_ROOTS` | `;`-separated model directories (facet roots) |
+| `BEELLAMA_MODELS` | Model directory used by the shipped launch configs |
+| `SNU_PATH` | Optional: full path to `simple-nvidia-undervolt.exe` (GPU scripts) |
+
+```pwsh
+setx BEELLAMA_REPO "C:\path\to\beellama"
+setx BEELLAMA_MODEL_ROOTS "D:\models;C:\models"
+setx BEELLAMA_MODELS "D:\models"
+```
+
+Open a new shell after `setx`; current shells do not see new user vars.
+
 ## Launch configs
 
 One YAML file per config in `configs/`. Drop a file in — no recompile.
@@ -56,7 +77,7 @@ label: Qwen3.8-27B UD-Q4_K_M MTP     # optional display name
 tags: [maxctx]                       # "quality" tag drives the quality facet
 build: beellama                      # binary key from run/config.json (+ lucebox)
 model:
-  gguf: D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_M.gguf
+  gguf: ${BEELLAMA_MODELS}/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_M.gguf
   mmproj: ...                        # optional; enables vision facet
   provider: unsloth                  # optional override of folder-derived provider
 draft: { gguf: ... }                 # optional draft model

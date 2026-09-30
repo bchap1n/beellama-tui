@@ -5,7 +5,7 @@ name: qwen38-ud-q4km-mtp
 label: Qwen3.8-27B UD-Q4_K_M MTP
 description: 131K q4_0 KV, b4096/ub512, think on, MTP n=2, bench max_tokens 12288
 build: beellama
-model: { gguf: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_M.gguf" }
+model: { gguf: "${BEELLAMA_MODELS}/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_M.gguf" }
 spec: { type: draft-mtp, draft_max: 2 }
 ctx_size: 131072
 batch: 4096

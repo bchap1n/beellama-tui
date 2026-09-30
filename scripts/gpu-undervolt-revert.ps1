@@ -35,7 +35,7 @@
 [CmdletBinding()]
 param(
     [int]$PowerLimit = 0,
-    [string]$ToolPath = 'C:\Users\brock\tools\simple-nvidia-undervolt\simple-nvidia-undervolt.exe',
+    [string]$ToolPath = $(if ($env:SNU_PATH) { $env:SNU_PATH } else { "$env:USERPROFILE\tools\simple-nvidia-undervolt\simple-nvidia-undervolt.exe" }),
     [string]$BaselineFile = (Join-Path $PSScriptRoot 'gpu-baseline-tuning.json')
 )
 

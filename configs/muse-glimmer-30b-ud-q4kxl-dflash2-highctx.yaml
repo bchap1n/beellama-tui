@@ -4,9 +4,9 @@ label: Muse Glimmer 30B UD-Q4_K_XL DFlash2 HighCtx
 description: 131K kvarn4 base + SWA kvarn3, tail 0 f16, think high + vision, DFlash2 n=15
 build: beellama
 model:
-  gguf: "D:/.lmstudio/models/unsloth/meta-glimmer30b-gguf/Muse-Glimmer-30B-UD-Q4_K_XL.gguf"
-  mmproj: "D:/.lmstudio/models/unsloth/meta-glimmer30b-gguf/mmproj-Muse-Glimmer-30B-Q4_K_M.gguf"
-draft: { gguf: "D:/.lmstudio/models/anbeeld/Muse-Glimmer-30B-DFlash2-Q4_K_M.gguf" }
+  gguf: "${BEELLAMA_MODELS}/unsloth/meta-glimmer30b-gguf/Muse-Glimmer-30B-UD-Q4_K_XL.gguf"
+  mmproj: "${BEELLAMA_MODELS}/unsloth/meta-glimmer30b-gguf/mmproj-Muse-Glimmer-30B-Q4_K_M.gguf"
+draft: { gguf: "${BEELLAMA_MODELS}/anbeeld/Muse-Glimmer-30B-DFlash2-Q4_K_M.gguf" }
 spec: { type: draft-dflash, draft_max: 15 }
 ctx_size: 131072
 batch: 256

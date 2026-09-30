@@ -3,8 +3,8 @@ name: qwen38-ud-q4km-dspark
 label: Qwen3.8-27B UD-Q4_K_M DSPark
 description: 64K q4_0 KV, DSPark drafter n=4, think on (low)
 build: beellama
-model: { gguf: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_M.gguf" }
-draft: { gguf: "D:/.lmstudio/models/dimInfer/Qwen3.8-27B-DSpark-Q8_0.gguf" }
+model: { gguf: "${BEELLAMA_MODELS}/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-Q4_K_M.gguf" }
+draft: { gguf: "${BEELLAMA_MODELS}/dimInfer/Qwen3.8-27B-DSpark-Q8_0.gguf" }
 spec: { type: draft-dspark, draft_max: 4 }
 ctx_size: 65536
 batch: 4096

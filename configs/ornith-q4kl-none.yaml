@@ -3,7 +3,7 @@ name: ornith-q4kl-none
 label: Ornith-1.5-35B-A3B Q4_K_L
 description: 81K kvarn KV, think on, no spec
 build: beellama
-model: { gguf: "D:/.lmstudio/models/bartowski/Ornith-1.5-35B-A3B-Q4_K_L.gguf", provider: bartowski }
+model: { gguf: "${BEELLAMA_MODELS}/bartowski/Ornith-1.5-35B-A3B-Q4_K_L.gguf", provider: bartowski }
 ctx_size: 81920
 batch: 2048
 ubatch: 256

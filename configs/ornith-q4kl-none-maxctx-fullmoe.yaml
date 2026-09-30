@@ -4,7 +4,7 @@ label: Ornith-1.5-35B-A3B Q4_K_L FullMoe MaxCtx
 description: 262K kvarn KV, n-cpu-moe 40 (all MoE in RAM), think on, no spec
 tags: [maxctx]
 build: beellama
-model: { gguf: "D:/.lmstudio/models/bartowski/Ornith-1.5-35B-A3B-Q4_K_L.gguf", provider: bartowski }
+model: { gguf: "${BEELLAMA_MODELS}/bartowski/Ornith-1.5-35B-A3B-Q4_K_L.gguf", provider: bartowski }
 ctx_size: 262144
 batch: 2048
 ubatch: 256

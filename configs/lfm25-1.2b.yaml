@@ -5,7 +5,7 @@ name: lfm25-1.2b
 label: LFM2.5-1.2B Q8_0
 description: LiquidAI LFM2.5-1.2B-Instruct Q8_0, 64K ctx, no spec decoding
 build: beellama
-model: { gguf: "D:/.lmstudio/models/liquidai/LFM2.5-1.2B-Instruct-Q8_0.gguf" }
+model: { gguf: "${BEELLAMA_MODELS}/liquidai/LFM2.5-1.2B-Instruct-Q8_0.gguf" }
 ctx_size: 65536
 batch: 4096
 ubatch: 512

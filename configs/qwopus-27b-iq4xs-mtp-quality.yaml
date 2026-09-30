@@ -29,7 +29,7 @@ label: Qwopus3.8-27B Flash V2 IQ4_XS MTP Quality
 description: 144K q8_0 KV, think on, MTP n=4, 14.4 GiB model
 tags: [quality]
 build: beellama
-model: { gguf: "D:/.lmstudio/models/jackrong/Qwopus3.8-27B-Flash-V2-MTP-IQ4_XS.gguf" }
+model: { gguf: "${BEELLAMA_MODELS}/jackrong/Qwopus3.8-27B-Flash-V2-MTP-IQ4_XS.gguf" }
 spec: { type: draft-mtp, draft_max: 4 }
 ctx_size: 147456
 batch: 2048
@@ -38,5 +38,5 @@ cache_k: q8_0
 cache_v: q8_0
 reasoning: true
 sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
-extra_args: ["--reasoning-budget", "8192", "--chat-template-file", "C:/Users/brock/Documents/github/beellama-tui/configs/qwen38-ud-chat-template.jinja", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+extra_args: ["--reasoning-budget", "8192", "--chat-template-file", "${APP_ROOT}/configs/qwen38-ud-chat-template.jinja", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
 max_tokens: 12288

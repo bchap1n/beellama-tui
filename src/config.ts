@@ -2,11 +2,12 @@
 import { parse as parseYaml } from "yaml";
 import { join } from "node:path";
 import type { AppConfig } from "./types.ts";
-import { appFile } from "./approot.ts";
+import { appFile, expandVars } from "./approot.ts";
 
 const DEFAULTS: AppConfig = {
-  beellama_repo: "C:/Users/brock/Documents/github/beellama",
-  model_roots: ["D:/.lmstudio/models", "C:/Users/brock/.lmstudio/models"],
+  beellama_repo: process.env.BEELLAMA_REPO ?? "",
+  // One env var holds every root: BEELLAMA_MODEL_ROOTS="D:/models;C:/models".
+  model_roots: (process.env.BEELLAMA_MODEL_ROOTS ?? "").split(";").filter(Boolean),
   server: { host: "127.0.0.1", port: 8082 },
   configs_dir: "configs",
   gpu_power_limit_watts: 280,
@@ -39,10 +40,19 @@ export async function loadAppConfig(cwd = process.cwd()): Promise<AppConfig> {
 
 function mergeDefaults(raw: unknown): AppConfig {
   const r = (raw ?? {}) as Partial<AppConfig>;
-  return {
+  const cfg: AppConfig = {
     ...DEFAULTS,
     ...r,
     server: { ...DEFAULTS.server, ...(r.server ?? {}) },
     benchmark: { ...DEFAULTS.benchmark, ...(r.benchmark ?? {}) },
   };
+  cfg.beellama_repo = expandVars(cfg.beellama_repo, "beellama-tui.yaml beellama_repo");
+  // yaml allows a string here so one ${VAR} can carry several roots — expand
+  // first, then split ("${VAR}" alone would split wrongly before expansion).
+  const rootsRaw = typeof cfg.model_roots === "string" ? (cfg.model_roots as unknown as string) : (cfg.model_roots ?? []).join(";");
+  cfg.model_roots = expandVars(rootsRaw, "beellama-tui.yaml model_roots").split(";").filter(Boolean);
+  if (cfg.binaries) {
+    for (const [k, v] of Object.entries(cfg.binaries)) cfg.binaries[k] = expandVars(v, `beellama-tui.yaml binaries.${k}`);
+  }
+  return cfg;
 }

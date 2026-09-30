@@ -2,6 +2,7 @@
 import { mkdir, rename, rm } from "node:fs/promises";
 import { join } from "node:path";
 import type { MetricsSnapshot, SessionStats } from "./types.ts";
+import { appRoot } from "./approot.ts";
 
 const POLL_MS = 5000;
 
@@ -122,7 +123,7 @@ async function archiveSession(stats: SessionStats): Promise<string> {
 }
 
 export async function readCurrentSession(): Promise<SessionStats | undefined> {
-  for (const dir of [process.cwd(), "C:/Users/brock/Documents/github/beellama-tui"]) {
+  for (const dir of [process.cwd(), appRoot()]) {
     try {
       const f = Bun.file(join(dir, "sessions", "current.json"));
       if (await f.exists()) return (await f.json()) as SessionStats;

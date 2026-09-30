@@ -10,7 +10,7 @@ label: Qwopus3.8-27B Flash V2 Q4_K_M MTP MaxCtx
 description: 196K kvarn KV, think on, MTP n=4
 tags: [maxctx]
 build: beellama
-model: { gguf: "D:/.lmstudio/models/jackrong/Qwopus3.8-27B-Flash-V2-MTP-Q4_K_M.gguf" }
+model: { gguf: "${BEELLAMA_MODELS}/jackrong/Qwopus3.8-27B-Flash-V2-MTP-Q4_K_M.gguf" }
 spec: { type: draft-mtp, draft_max: 4 }
 ctx_size: 196608
 batch: 2048

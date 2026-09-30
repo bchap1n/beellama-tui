@@ -38,3 +38,15 @@ export function appRoot(): string {
 export function appFile(...segments: string[]): string {
   return join(appRoot(), ...segments);
 }
+
+// Expand ${VAR} from the environment plus the built-in ${APP_ROOT}. A missing
+// var is a load error, not a silent empty string: a mistyped var name must not
+// resolve to a wrong path.
+export function expandVars(value: string, where: string): string {
+  return value.replace(/\$\{([A-Za-z_][A-Za-z0-9_]*)\}/g, (_m, name: string) => {
+    if (name === "APP_ROOT") return appRoot();
+    const v = process.env[name];
+    if (v === undefined || v === "") throw new Error(`${where}: env var ${name} is not set`);
+    return v;
+  });
+}

@@ -4,6 +4,7 @@ import { parse as parseYaml } from "yaml";
 import { basename, isAbsolute, join, relative } from "node:path";
 import { readdir } from "node:fs/promises";
 import type { Facets, LaunchConfig, ResolvedConfig, SpecFacet } from "./types.ts";
+import { expandVars } from "./approot.ts";
 
 // Legacy quant regex from start-beellama.ps1 line 184, extended with Q4_0/Q8_0-style drafts.
 const QUANT_RE =
@@ -45,6 +46,11 @@ function asString(v: unknown, file: string, path: string): string {
   return v;
 }
 
+// Path fields support ${VAR} and ${APP_ROOT}; a missing var fails the parse.
+function asPath(v: unknown, file: string, path: string): string {
+  return expandVars(asString(v, file, path), `${file} ${path}`);
+}
+
 function asNumber(v: unknown, file: string, path: string): number {
   if (typeof v !== "number" || !Number.isFinite(v)) err(file, path, "must be a number");
   return v;
@@ -75,8 +81,8 @@ export function parseLaunchConfig(text: string, file: string): LaunchConfig {
   if (!isRecord(raw.model)) err(file, "model", "must be a mapping");
   const modelRaw = raw.model;
   checkKeys(modelRaw, MODEL_KEYS, file, "model.");
-  const gguf = modelRaw.gguf !== undefined ? asString(modelRaw.gguf, file, "model.gguf") : undefined;
-  const dir = modelRaw.dir !== undefined ? asString(modelRaw.dir, file, "model.dir") : undefined;
+  const gguf = modelRaw.gguf !== undefined ? asPath(modelRaw.gguf, file, "model.gguf") : undefined;
+  const dir = modelRaw.dir !== undefined ? asPath(modelRaw.dir, file, "model.dir") : undefined;
   if (gguf === undefined && dir === undefined)
     err(file, "model", "must set either model.gguf (llama-server builds) or model.dir (exllamav3)");
 
@@ -103,13 +109,13 @@ export function parseLaunchConfig(text: string, file: string): LaunchConfig {
     cfg.tags = raw.tags;
   }
   if (modelRaw.provider !== undefined) cfg.model.provider = asString(modelRaw.provider, file, "model.provider");
-  if (modelRaw.mmproj !== undefined) cfg.model.mmproj = asString(modelRaw.mmproj, file, "model.mmproj");
+  if (modelRaw.mmproj !== undefined) cfg.model.mmproj = asPath(modelRaw.mmproj, file, "model.mmproj");
   if (modelRaw.mmproj_gpu !== undefined) cfg.model.mmproj_gpu = asBool(modelRaw.mmproj_gpu, file, "model.mmproj_gpu");
 
   if (raw.draft !== undefined) {
     if (!isRecord(raw.draft)) err(file, "draft", "must be a mapping");
     checkKeys(raw.draft, new Set(["gguf"]), file, "draft.");
-    cfg.draft = { gguf: asString(raw.draft.gguf, file, "draft.gguf") };
+    cfg.draft = { gguf: asPath(raw.draft.gguf, file, "draft.gguf") };
   }
 
   if (raw.spec !== undefined) {
@@ -132,7 +138,7 @@ export function parseLaunchConfig(text: string, file: string): LaunchConfig {
       err(file, "draft_mode", "must be mtp, dflash2, or none");
     cfg.draft_mode = dm;
   }
-  if (raw.draft_dir !== undefined) cfg.draft_dir = asString(raw.draft_dir, file, "draft_dir");
+  if (raw.draft_dir !== undefined) cfg.draft_dir = asPath(raw.draft_dir, file, "draft_dir");
   if (raw.cache_k !== undefined) cfg.cache_k = asString(raw.cache_k, file, "cache_k");
   if (raw.cache_v !== undefined) cfg.cache_v = asString(raw.cache_v, file, "cache_v");
   if (raw.kv_tail_tokens !== undefined) cfg.kv_tail_tokens = asNumber(raw.kv_tail_tokens, file, "kv_tail_tokens");
@@ -160,7 +166,7 @@ export function parseLaunchConfig(text: string, file: string): LaunchConfig {
   if (raw.extra_args !== undefined) {
     if (!Array.isArray(raw.extra_args) || !raw.extra_args.every((a) => typeof a === "string"))
       err(file, "extra_args", "must be a list of strings");
-    cfg.extra_args = raw.extra_args;
+    cfg.extra_args = raw.extra_args.map((a) => expandVars(a, `${file} extra_args`));
   }
   if (raw.port !== undefined) cfg.port = asNumber(raw.port, file, "port");
   if (raw.max_tokens !== undefined) {

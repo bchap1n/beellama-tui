@@ -7,7 +7,7 @@ label: Qwen3.8-27B EXL3 3.5bpw MTP
 description: 192K Hadamard 8,4 KV, MTP via exllamav3 kit launcher
 build: exllamav3
 model:
-  dir: "D:/.lmstudio/models/exl3/Qwen3.8-27B-EXL3-3.5bpw"
+  dir: "${BEELLAMA_MODELS}/exl3/Qwen3.8-27B-EXL3-3.5bpw"
   provider: Mia-AiLab
 ctx_size: 196608
 cache_quant: "8,4"

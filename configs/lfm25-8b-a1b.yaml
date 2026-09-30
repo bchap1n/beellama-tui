@@ -9,8 +9,8 @@ name: lfm25-8b-a1b
 label: LFM2.5-8B-A1B DSpark
 description: LiquidAI LFM2.5-8B-A1B Q4_K_M + DSpark drafter, 128K ctx, card sampling
 build: beellama
-model: { gguf: "D:/.lmstudio/models/liquidai/LFM2.5-8B-A1B-Q4_K_M.gguf" }
-draft: { gguf: "D:/.lmstudio/models/liquidai/LFM2.5-8B-A1B-DSpark-Q4_K_M.gguf" }
+model: { gguf: "${BEELLAMA_MODELS}/liquidai/LFM2.5-8B-A1B-Q4_K_M.gguf" }
+draft: { gguf: "${BEELLAMA_MODELS}/liquidai/LFM2.5-8B-A1B-DSpark-Q4_K_M.gguf" }
 spec: { type: draft-dspark, draft_max: 8 }
 ctx_size: 131072
 batch: 4096

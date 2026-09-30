@@ -16,7 +16,7 @@ label: Qwen3.8-27B UD-IQ4_XS MTP Quality
 description: 160K q8_0 KV, think on (medium), MTP n=4, 13.3 GiB model
 tags: [quality]
 build: beellama
-model: { gguf: "D:/.lmstudio/models/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-IQ4_XS.gguf" }
+model: { gguf: "${BEELLAMA_MODELS}/unsloth/qwen3.8-27B-gguf/Qwen3.8-27B-UD-IQ4_XS.gguf" }
 spec: { type: draft-mtp, draft_max: 4 }
 ctx_size: 163840
 batch: 2048

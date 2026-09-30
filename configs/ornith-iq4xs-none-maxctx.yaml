@@ -4,7 +4,7 @@ label: Ornith-1.5-35B-A3B IQ4_XS MaxCtx
 description: 147K kvarn KV, think on, no spec
 tags: [maxctx]
 build: beellama
-model: { gguf: "D:/.lmstudio/models/AtomicChat/Ornith-1.5-35B-A3B-IQ4_XS.gguf", provider: AtomicChat }
+model: { gguf: "${BEELLAMA_MODELS}/AtomicChat/Ornith-1.5-35B-A3B-IQ4_XS.gguf", provider: AtomicChat }
 ctx_size: 147456
 batch: 2048
 ubatch: 256

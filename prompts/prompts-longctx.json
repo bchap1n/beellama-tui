@@ -107,7 +107,7 @@
     "type": "LongContext",
     "targetChars": 500000,
     "needleOffset": 0.9,
-    "needle": "tool_call: write path=C:/Users/brock/Documents/github/beellama/run/Ornith-1.5-35B-A3B-Q4_K_L-none-maxctx-beellama.ps1 status=ok",
+    "needle": "tool_call: write path=C:/src/beellama/run/Ornith-1.5-35B-A3B-Q4_K_L-none-maxctx-beellama.ps1 status=ok",
     "messages": [
       {
         "role": "system",
