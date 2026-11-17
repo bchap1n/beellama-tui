@@ -125,6 +125,19 @@ describe("facets", () => {
   });
 });
 
+describe("spec facet from exl3 draft_mode", () => {
+  // The TUI spec column reads cfg.draft_mode for exllamav3 configs; a dflash2
+  // drafter must render as its own spec label, not fall through to "other".
+  const exl3 = parseLaunchConfig("name: x\nbuild: exllamav3\nmodel: { dir: D:/models/exl3/sage }\n", "x.yaml");
+  test("dflash2 drafter reads dflash2", () => {
+    expect(deriveFacets({ ...exl3, draft_mode: "dflash2" }, ROOTS).spec).toBe("dflash2");
+  });
+  test("mtp drafter reads mtp, none reads none", () => {
+    expect(deriveFacets({ ...exl3, draft_mode: "mtp" }, ROOTS).spec).toBe("mtp");
+    expect(deriveFacets({ ...exl3, draft_mode: "none" }, ROOTS).spec).toBe("none");
+  });
+});
+
 describe("CSV header parity", () => {
   test("legacy header plus FinishReason column", () => {
     expect(CSV_HEADER).toBe(
@@ -167,8 +180,8 @@ describe("report analysis input", () => {
     await mkdir(outDir, { recursive: true });
     const sent: string[] = [];
     const realFetch = globalThis.fetch;
-    const realKey = process.env.NVIDIA_API_KEY;
-    process.env.NVIDIA_API_KEY = "test-key";
+    const realKey = process.env.OPENCODE_API_KEY;
+    process.env.OPENCODE_API_KEY = "test-key";
     globalThis.fetch = ((_url: string | URL | Request, init?: RequestInit) => {
       sent.push(String(init?.body ?? ""));
       return Promise.resolve(Response.json({ choices: [{ message: { content: "verdict" } }] }));
@@ -177,8 +190,8 @@ describe("report analysis input", () => {
       await writeReport(outDir, rows, [cfg], [], "coding");
     } finally {
       globalThis.fetch = realFetch;
-      if (realKey === undefined) delete process.env.NVIDIA_API_KEY;
-      else process.env.NVIDIA_API_KEY = realKey;
+      if (realKey === undefined) delete process.env.OPENCODE_API_KEY;
+      else process.env.OPENCODE_API_KEY = realKey;
     }
 
     expect(sent.length).toBe(1);
@@ -216,21 +229,21 @@ describe("report harness provenance", () => {
     return html.match(/<div class="sub">(.*?)<\/div>/)?.[1] ?? "";
   }
 
-  const realKey = process.env.NVIDIA_API_KEY;
+  const realKey = process.env.OPENCODE_API_KEY;
   afterEach(() => {
-    if (realKey === undefined) delete process.env.NVIDIA_API_KEY;
-    else process.env.NVIDIA_API_KEY = realKey;
+    if (realKey === undefined) delete process.env.OPENCODE_API_KEY;
+    else process.env.OPENCODE_API_KEY = realKey;
   });
 
   test("coding reports name the OMP harness", async () => {
-    delete process.env.NVIDIA_API_KEY;
+    delete process.env.OPENCODE_API_KEY;
     const sub = await subtitleFor("coding", "omp 18.1.15");
     expect(sub).toContain("engine: beellama.cpp 1.2.3");
     expect(sub).toContain("harness: omp 18.1.15");
   });
 
   test("other sets stay engine-only", async () => {
-    delete process.env.NVIDIA_API_KEY;
+    delete process.env.OPENCODE_API_KEY;
     for (const set of ["standard", "longctx"]) {
       const sub = await subtitleFor(set, "omp 18.1.15");
       expect(sub).toContain("engine: beellama.cpp 1.2.3");
@@ -240,27 +253,27 @@ describe("report harness provenance", () => {
 });
 
 describe("Verdict failure reporting", () => {
-  // A swallowed error made every failure read "NVIDIA_API_KEY not set",
+  // A swallowed error made every failure read "OPENCODE_API_KEY not set",
   // which sent us hunting a key that was present. The reason must be truthful.
-  const realKey = process.env.NVIDIA_API_KEY;
+  const realKey = process.env.OPENCODE_API_KEY;
   const realFetch = globalThis.fetch;
   const promptsDir = join(appRoot(), "prompts");
 
   afterEach(() => {
     globalThis.fetch = realFetch;
-    if (realKey === undefined) delete process.env.NVIDIA_API_KEY;
-    else process.env.NVIDIA_API_KEY = realKey;
+    if (realKey === undefined) delete process.env.OPENCODE_API_KEY;
+    else process.env.OPENCODE_API_KEY = realKey;
   });
 
   test("names the missing key when it is absent", async () => {
-    delete process.env.NVIDIA_API_KEY;
+    delete process.env.OPENCODE_API_KEY;
     const out = await analysisVerdict("data", 1, promptsDir);
     expect(out.text).toBeUndefined();
-    expect(out.reason).toContain("NVIDIA_API_KEY");
+    expect(out.reason).toContain("OPENCODE_API_KEY");
   });
 
   test("reports the HTTP status instead of blaming the key", async () => {
-    process.env.NVIDIA_API_KEY = "test-key";
+    process.env.OPENCODE_API_KEY = "test-key";
     globalThis.fetch = (() =>
       Promise.resolve(new Response("rate limited", { status: 429 }))) as unknown as typeof fetch;
     const out = await analysisVerdict("data", 1, promptsDir);
@@ -270,7 +283,7 @@ describe("Verdict failure reporting", () => {
   });
 
   test("reports a transport failure with its message", async () => {
-    process.env.NVIDIA_API_KEY = "test-key";
+    process.env.OPENCODE_API_KEY = "test-key";
     globalThis.fetch = (() => Promise.reject(new Error("getaddrinfo ENOTFOUND"))) as unknown as typeof fetch;
     const out = await analysisVerdict("data", 1, promptsDir);
     expect(out.text).toBeUndefined();
@@ -278,7 +291,7 @@ describe("Verdict failure reporting", () => {
   });
 
   test("returns the verdict text on success", async () => {
-    process.env.NVIDIA_API_KEY = "test-key";
+    process.env.OPENCODE_API_KEY = "test-key";
     globalThis.fetch = (() =>
       Promise.resolve(Response.json({ choices: [{ message: { content: "OVERALL: fine" } }] }))) as unknown as typeof fetch;
     const out = await analysisVerdict("data", 1, promptsDir);
@@ -289,7 +302,7 @@ describe("Verdict failure reporting", () => {
   // A missing or rotated key used to leave a speed-run report looking normal,
   // because the skip line was rendered for the coding set only.
   test("a speed report states why the verdict is missing", async () => {
-    delete process.env.NVIDIA_API_KEY;
+    delete process.env.OPENCODE_API_KEY;
     const outDir = join(tmpdir(), "beellama-verdict-visible");
     await mkdir(outDir, { recursive: true });
     const cfg = resolveConfig(
@@ -305,7 +318,7 @@ describe("Verdict failure reporting", () => {
     };
     await writeReport(outDir, [row], [cfg], [], "standard");
     const html = await Bun.file(join(outDir, "results.html")).text();
-    expect(html).toContain("Skipped: NVIDIA_API_KEY not set");
+    expect(html).toContain("Skipped: OPENCODE_API_KEY not set.");
   });
 });
 

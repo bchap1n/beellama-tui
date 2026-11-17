@@ -1,4 +1,4 @@
-// Report generation: legacy-header CSV, single-file neon HTML, NVIDIA verdict.
+// Report generation: legacy-header CSV, single-file neon HTML, OpenCode Go verdict.
 import { writeFile } from "node:fs/promises";
 import * as os from "node:os";
 import { join } from "node:path";
@@ -45,19 +45,21 @@ export interface VerdictOutcome {
   reason?: string;
 }
 
-// Verdict provider: NVIDIA NIM. High reasoning effort needs a long budget:
-// 8192 output tokens at ~100 tok/s is the normal case, not the slow one.
-const VERDICT_URL = "https://integrate.api.nvidia.com/v1/chat/completions";
-const VERDICT_MODEL = "meta/muse-glimmer-30b";
+// Verdict provider: OpenCode Go. Go routes by session, so the request carries a
+// stable id: one per report process, not one per call. Thinking at medium
+// effort needs a long budget; 8192 output tokens is the normal case.
+const VERDICT_URL = "https://opencode.ai/zen/go/v1/chat/completions";
+const VERDICT_MODEL = "claude-haiku-5-5";
 const VERDICT_TIMEOUT_MS = 300_000;
+const VERDICT_SESSION = `beellama-verdict-${crypto.randomUUID()}`;
 
 export async function analysisVerdict(
   dataText: string,
   configCount: number,
   promptsDir: string,
 ): Promise<VerdictOutcome> {
-  const key = process.env.NVIDIA_API_KEY;
-  if (!key) return { reason: "NVIDIA_API_KEY not set" };
+  const key = process.env.OPENCODE_API_KEY;
+  if (!key) return { reason: "OPENCODE_API_KEY not set" };
   try {
     const ana = JSON.parse(await Bun.file(join(promptsDir, "prompts-analysis.json")).text()) as AnalysisPrompts;
     const isCompare = configCount > 1;
@@ -70,7 +72,7 @@ export async function analysisVerdict(
       .replaceAll("{2}", String(configCount));
     const res = await fetch(VERDICT_URL, {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, Accept: "application/json", "Content-Type": "application/json" },
+      headers: { Authorization: `Bearer ${key}`, "x-opencode-session": VERDICT_SESSION, Accept: "application/json", "Content-Type": "application/json" },
       body: JSON.stringify({
         model: VERDICT_MODEL,
         messages: [
@@ -80,22 +82,22 @@ export async function analysisVerdict(
         max_tokens: 8192,
         temperature: 1,
         top_p: 0.95,
-        reasoning_effort: "high",
+        reasoning_effort: "medium",
         stream: false,
       }),
       signal: AbortSignal.timeout(VERDICT_TIMEOUT_MS),
     });
     if (!res.ok) {
       const detail = (await res.text().catch(() => "")).replace(/\s+/g, " ").trim().slice(0, 200);
-      return { reason: `NVIDIA returned HTTP ${res.status}${detail ? `: ${detail}` : ""}` };
+      return { reason: `OpenCode returned HTTP ${res.status}${detail ? `: ${detail}` : ""}` };
     }
     const json = (await res.json()) as { choices?: { message?: { content?: string; reasoning_content?: string } }[] };
     const msg = json.choices?.[0]?.message;
     const verdict = (msg?.content || msg?.reasoning_content || "").trim();
-    return verdict.length > 0 ? { text: verdict } : { reason: "NVIDIA returned an empty verdict" };
+    return verdict.length > 0 ? { text: verdict } : { reason: "OpenCode returned an empty verdict" };
   } catch (e) {
     const aborted = e instanceof Error && (e.name === "TimeoutError" || e.name === "AbortError");
-    return { reason: aborted ? `NVIDIA request timed out after ${VERDICT_TIMEOUT_MS / 1000}s` : `NVIDIA request failed: ${e instanceof Error ? e.message : String(e)}` };
+    return { reason: aborted ? `OpenCode request timed out after ${VERDICT_TIMEOUT_MS / 1000}s` : `OpenCode request failed: ${e instanceof Error ? e.message : String(e)}` };
   }
 }
 
@@ -226,7 +228,7 @@ export async function writeReport(
       "</table></details>";
   }
 
-  // DeepSeek verdict
+  // OpenCode Go verdict (claude-haiku-5-5)
   let analysisHtml = "";
   const dataLines: string[] = [];
   for (const cfg of configs) {

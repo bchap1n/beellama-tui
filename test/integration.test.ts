@@ -15,12 +15,12 @@ import type { ResolvedConfig } from "../src/types.ts";
 // Report generation calls the verdict provider whenever a key is present. These
 // stubs assert on file contents, so a live 20s+ model call only burns money and
 // blows the 30s test budget. Remove the key for this file, restore it after.
-const verdictKey = process.env.NVIDIA_API_KEY;
+const verdictKey = process.env.OPENCODE_API_KEY;
 beforeAll(() => {
-  delete process.env.NVIDIA_API_KEY;
+  delete process.env.OPENCODE_API_KEY;
 });
 afterAll(() => {
-  if (verdictKey !== undefined) process.env.NVIDIA_API_KEY = verdictKey;
+  if (verdictKey !== undefined) process.env.OPENCODE_API_KEY = verdictKey;
 });
 
 interface StubServer {

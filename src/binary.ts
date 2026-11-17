@@ -54,6 +54,7 @@ export function engineIdentity(buildKey: string, binaryPath: string, _appCfg?: A
     "beellama_prebuilt": "beellama.cpp (prebuilt)",
     "llama.cpp": "llama.cpp",
     "ik_llama": "ik_llama.cpp",
+    "llamAmpere": "llamAmpere",
     "lucebox": "lucebox dflash",
     "exllamav3": "exllamav3",
   };

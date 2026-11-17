@@ -240,6 +240,7 @@ export function specFacetOf(cfg: LaunchConfig): SpecFacet {
   const t = cfg.spec?.type ?? cfg.draft_mode;
   if (!t || t === "none") return "none";
   if (t === "draft-mtp" || t === "mtp") return "mtp";
+  if (t === "dflash2") return "dflash2";
   if (t === "draft-dflash" || t === "dflash") return "dflash";
   if (t === "draft-dspark" || t === "dspark") return "dspark";
   return "other";

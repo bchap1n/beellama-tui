@@ -6,23 +6,22 @@
     Creates three scheduled tasks that run with highest privileges, so the TUI
     can change the GPU profile without an elevation prompt:
 
-      beellama-gpu-undervolt-apply        runs gpu-undervolt-curve-1605-750.ps1, at logon and on TUI start
+      beellama-gpu-undervolt-apply        runs gpu-undervolt-curve-800-1700.ps1, at logon only
       beellama-gpu-undervolt-powerlimit   runs gpu-undervolt-apply.ps1, on demand only
       beellama-gpu-undervolt-revert       runs gpu-undervolt-revert.ps1, on demand only
 
     The apply task carries the Anbeeld curve: a 300 W power limit with a V/F cap
-    at 0.750 V holding 1605 MHz. The curve script takes its own defaults, so the
+    at 0.800 V holding 1700 MHz. The curve script takes its own defaults, so the
     -PowerLimit and -Clock parameters below do not reach it. They configure the
     on-demand powerlimit task instead.
 
     The powerlimit task is the same power limit without the curve. Use it when
-    the curve is not wanted: a flat 0.750 V cap is slower for prefill-heavy work
+    the curve is not wanted: a flat 0.800 V cap is slower for prefill-heavy work
     than an unlocked clock at the same limit.
 
     The apply task has an at-logon trigger, so the card comes up on the Anbeeld
     curve by default. The revert task has no trigger: run it manually before
-    gaming. The TUI also runs the apply task once when it starts, so serving
-    after a revert returns the card to the curve profile.
+    gaming. Run the apply task again to return to the curve after a revert.
 
     The powerlimit task bakes in the power limit and clock given here, because a
     scheduled task cannot take arguments at start time. Re-run this script after
@@ -98,7 +97,7 @@ if ($Remove) {
 $pwshPath = (Get-Command pwsh -ErrorAction Stop).Source
 $applyScript = Join-Path $PSScriptRoot 'gpu-undervolt-apply.ps1'
 $revertScript = Join-Path $PSScriptRoot 'gpu-undervolt-revert.ps1'
-$logonScript = Join-Path $PSScriptRoot 'gpu-undervolt-curve-1605-750.ps1'
+$logonScript = Join-Path $PSScriptRoot 'gpu-undervolt-curve-800-1700.ps1'
 foreach ($script in @($applyScript, $revertScript, $logonScript)) {
     if (-not (Test-Path -LiteralPath $script)) {
         throw "Missing script: $script"
@@ -138,11 +137,11 @@ $logonTrigger = New-ScheduledTaskTrigger -AtLogOn -User "$env:USERDOMAIN\$env:US
 
 $applyClock = if ($Clock -gt 0) { "$Clock MHz lock" } else { 'clock unlocked' }
 Register-ScheduledTask -TaskName $ApplyTask -Trigger $logonTrigger -Action $logonAction -Principal $principal -Settings $settings `
-    -Description 'Apply the Anbeeld undervolt curve at logon: 300 W limit, 0.750 V cap at 1605 MHz. Runs at logon and on TUI start.' -Force | Out-Null
+    -Description 'Apply the Anbeeld undervolt curve at logon: 300 W limit, 0.800 V cap at 1700 MHz. Runs at logon only.' -Force | Out-Null
 Register-ScheduledTask -TaskName $RevertTask -Action $revertAction -Principal $principal -Settings $settings `
     -Description 'Revert the beellama GPU profile: unlock the graphics clock, clear the V/F curve, restore the default power limit. On demand only.' -Force | Out-Null
 Register-ScheduledTask -TaskName $PowerLimitTask -Action $applyAction -Principal $principal -Settings $settings `
     -Description "Apply the power-limit-only profile: $PowerLimit W limit, $applyClock, no V/F curve. On demand only." -Force | Out-Null
 
-Write-Host "Registered $ApplyTask (curve 1605 MHz / 750 mV / 300 W, at logon and on TUI start), $PowerLimitTask ($PowerLimit W, $applyClock, on demand), and $RevertTask (on demand)." -ForegroundColor Green
+Write-Host "Registered $ApplyTask (curve 1700 MHz / 800 mV / 300 W, at logon), $PowerLimitTask ($PowerLimit W, $applyClock, on demand), and $RevertTask (on demand)." -ForegroundColor Green
 Write-Host 'Run them with: pwsh -File scripts/gpu-undervolt-tasks-run.ps1 [-PowerLimit|-Revert]'

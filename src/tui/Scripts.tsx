@@ -9,7 +9,7 @@ export interface ScriptAction {
 }
 
 export const SCRIPT_ACTIONS: ScriptAction[] = [
-  { id: "apply", label: "Apply Anbeeld curve", hint: "1605 MHz @ 0.750 V · 300 W · same as logon" },
+  { id: "apply", label: "Apply Anbeeld curve", hint: "1700 MHz @ 0.800 V · 300 W · same as logon" },
   { id: "powerlimit", label: "Apply power limit only", hint: "no V/F curve · yaml power limit" },
   { id: "revert", label: "Revert to baseline", hint: "unlock clock, restore baseline curve, default power" },
   { id: "install", label: "Install scheduled tasks", hint: "elevated · registers tasks, curve runs at logon" },

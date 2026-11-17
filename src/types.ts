@@ -48,7 +48,7 @@ export interface Sampling {
   repeat_penalty?: number;
 }
 
-export type SpecFacet = "none" | "mtp" | "dflash" | "dspark" | "other";
+export type SpecFacet = "none" | "mtp" | "dflash" | "dflash2" | "dspark" | "other";
 
 export interface Facets {
   provider: string;

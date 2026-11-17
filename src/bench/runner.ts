@@ -333,6 +333,8 @@ export async function runBenchmark(
 
 function serverUrl(appCfg: { server: { host: string; port: number } }, port?: number): string {
   const host = appCfg.server.host === "0.0.0.0" ? "127.0.0.1" : appCfg.server.host;
-  return `http://${host}:${port ?? appCfg.server.port}`;
+  // `||` matches launchServer: a parsed config without `port` is 0, and
+  // `??` would happily send every bench request to http://host:0.
+  return `http://${host}:${port || appCfg.server.port}`;
 }
 

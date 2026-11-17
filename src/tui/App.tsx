@@ -11,7 +11,7 @@ import { ConfigList } from "./ConfigList.tsx";
 import { Filters, emptyFilters, filtersActive, matchesFilters, type FacetFilters } from "./Filters.tsx";
 import { Sources } from "./Sources.tsx";
 import { Scripts, SCRIPT_ACTIONS, type ScriptAction } from "./Scripts.tsx";
-import { applyGpuProfile, installGpuTasks, runGpuTask, taskInstalled, APPLY_TASK } from "../gpu-profile.ts";
+import { installGpuTasks, runGpuTask, taskInstalled, APPLY_TASK } from "../gpu-profile.ts";
 import { LaunchView, OutputView, outputScrollControls } from "./LaunchView.tsx";
 import { StatsBar } from "./StatsBar.tsx";
 import { probeGpu, type GpuStats } from "./gpu.ts";
@@ -450,9 +450,6 @@ export async function runTui(): Promise<void> {
       errors.push(`${c.name}: ${e instanceof Error ? e.message.split("\n")[0] : String(e)}`);
     }
   }
-  const profile = await applyGpuProfile();
-  if (!profile.ok) errors.push(`gpu profile: ${profile.message}`);
-
   const { waitUntilExit } = render(<App appCfg={appCfg} configs={resolved} errors={errors} />);
   await waitUntilExit();
 }

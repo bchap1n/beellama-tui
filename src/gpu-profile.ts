@@ -66,37 +66,3 @@ export async function installGpuTasks(): Promise<GpuProfileResult> {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };
   }
 }
-
-// The apply task runs the Anbeeld curve (power limit plus a V/F cap). nvidia-smi
-// cannot set voltage, so the direct fallback cannot reproduce it. Run the curve
-// script itself instead; it guards on elevation itself. Fail closed rather than
-// landing on a power-limit-only profile the task would never produce.
-const LOGON_SCRIPT = "gpu-undervolt-curve-1605-750.ps1";
-
-// Called once when the TUI starts. Prefer the scheduled task; fall back to the
-// curve script so an elevated TUI keeps working without installed tasks.
-export async function applyGpuProfile(): Promise<GpuProfileResult> {
-  const viaTask = await runGpuTask("apply");
-  if (viaTask.ok) return viaTask;
-  return runCurveScriptFallback(viaTask);
-}
-
-async function runCurveScriptFallback(viaTask: GpuProfileResult): Promise<GpuProfileResult> {
-  const script = appFile("scripts", LOGON_SCRIPT);
-  try {
-    const proc = Bun.spawn(
-      ["pwsh", "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass", "-File", script],
-      { stdout: "pipe", stderr: "pipe" },
-    );
-    const [out, err] = await Promise.all([
-      new Response(proc.stdout).text(),
-      new Response(proc.stderr).text(),
-    ]);
-    const code = await proc.exited;
-    if (code === 0) return { ok: true, message: resultLine(out, err, code) };
-    // Keep the task failure visible: an unused appCfg would hide why the task path failed.
-    return { ok: false, message: `${resultLine(out, err, code)} (task path: ${viaTask.message})` };
-  } catch (e) {
-    return { ok: false, message: e instanceof Error ? e.message : String(e) };
-  }
-}
