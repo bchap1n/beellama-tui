@@ -3,6 +3,7 @@
 import { parse as parseYaml } from "yaml";
 import { basename, isAbsolute, join, relative } from "node:path";
 import { readdir } from "node:fs/promises";
+import { readdirSync, statSync } from "node:fs";
 import type { Facets, LaunchConfig, ResolvedConfig, SpecFacet } from "./types.ts";
 import { expandVars } from "./approot.ts";
 
@@ -246,12 +247,33 @@ export function specFacetOf(cfg: LaunchConfig): SpecFacet {
   return "other";
 }
 
+// Weights on disk: the gguf file, or the sum of top-level files in an
+// exllamav3 model dir (shards are flat). Missing path = undefined, not 0.
+export function modelBytes(cfg: LaunchConfig): number | undefined {
+  // An exllamav3 config leaves model.gguf as "" — an empty path is not a model.
+  const p = cfg.model.gguf || cfg.model.dir;
+  if (!p) return undefined;
+  try {
+    const st = statSync(p);
+    if (st.isFile()) return st.size;
+    let total = 0;
+    for (const e of readdirSync(p, { withFileTypes: true })) {
+      if (!e.isFile()) continue;
+      try { total += statSync(join(p, e.name)).size; } catch { /* skip unreadable shard */ }
+    }
+    return total || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export function deriveFacets(cfg: LaunchConfig, modelRoots: string[]): Facets {
   const stem = cfg.model.gguf
     ? basename(cfg.model.gguf).replace(/\.gguf$/i, "")
     : basename(cfg.model.dir ?? "");
   let { quant, model } = quantOf(stem);
   if (cfg.build === "exllamav3") quant = "EXL3"; // one facet for the engine; bitrates stay in the name
+  const bytes = modelBytes(cfg);
   return {
     provider: providerOf(cfg.model.gguf ?? cfg.model.dir ?? "", modelRoots, cfg.model.provider),
     quant,
@@ -261,6 +283,8 @@ export function deriveFacets(cfg: LaunchConfig, modelRoots: string[]): Facets {
     vision: cfg.model.mmproj !== undefined,
     quality: cfg.tags.includes("quality"),
     spec: specFacetOf(cfg),
+    engine: cfg.build,
+    size_gb: bytes === undefined ? undefined : bytes / 1024 ** 3,
   };
 }
 

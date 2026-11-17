@@ -4,7 +4,7 @@ import { mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { appRoot } from "../src/approot.ts";
-import { parseLaunchConfig, deriveFacets, buildArgs, quantOf, providerOf, resolveConfig, ConfigError } from "../src/launch-config.ts";
+import { parseLaunchConfig, deriveFacets, buildArgs, quantOf, providerOf, resolveConfig, modelBytes, ConfigError } from "../src/launch-config.ts";
 import { expandLongCtx } from "../src/bench/prompts.ts";
 import { rowsToCsv, CSV_HEADER, writeReport, analysisVerdict } from "../src/bench/report.ts";
 import { deltaTokPerSec, fetchMetrics } from "../src/metrics.ts";
@@ -123,6 +123,31 @@ describe("facets", () => {
     expect(f.vision).toBe(false);
     expect(f.quality).toBe(false);
     expect(f.spec).toBe("mtp");
+    expect(f.engine).toBe("beellama");
+    expect(f.size_gb).toBeUndefined(); // weights not on this machine
+  });
+});
+
+describe("model size", () => {
+  const yamlPath = (p: string) => p.replaceAll("\\", "/");
+  test("gguf file size, exllamav3 dir sum, missing path has no size", async () => {
+    const dir = join(tmpdir(), `size-${crypto.randomUUID()}`);
+    await mkdir(join(dir, "shards"), { recursive: true });
+    await Bun.write(join(dir, "w.gguf"), "a".repeat(1000));
+    await Bun.write(join(dir, "shards", "1.gguf"), "a".repeat(400));
+    await Bun.write(join(dir, "shards", "2.gguf"), "a".repeat(600));
+
+    const one = parseLaunchConfig(`name: one\nmodel: { gguf: "${yamlPath(join(dir, "w.gguf"))}" }\n`, "one.yaml");
+    expect(modelBytes(one)).toBe(1000);
+    expect(deriveFacets(one, []).size_gb).toBeCloseTo(1000 / 1024 ** 3, 10);
+
+    const sharded = parseLaunchConfig(`name: two\nbuild: exllamav3\nmodel: { dir: "${yamlPath(join(dir, "shards"))}" }\n`, "two.yaml");
+    expect(modelBytes(sharded)).toBe(1000);
+    expect(deriveFacets(sharded, []).engine).toBe("exllamav3");
+
+    const gone = parseLaunchConfig(`name: three\nmodel: { gguf: "${yamlPath(join(dir, "nope.gguf"))}" }\n`, "three.yaml");
+    expect(modelBytes(gone)).toBeUndefined();
+    expect(deriveFacets(gone, []).size_gb).toBeUndefined();
   });
 });
 

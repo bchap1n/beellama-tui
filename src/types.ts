@@ -59,6 +59,10 @@ export interface Facets {
   vision: boolean;
   quality: boolean;
   spec: SpecFacet;
+  /** Inference engine: the config's `build` key (beellama, exllamav3, …). */
+  engine: string;
+  /** Model weights on disk, GiB. Absent when the path is missing. */
+  size_gb?: number;
 }
 
 export interface ResolvedConfig extends LaunchConfig {
