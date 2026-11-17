@@ -20,6 +20,7 @@ function cell(v: string, width: number): string {
 export function ConfigList(props: {
   rows: ResolvedConfig[];
   selected: number;
+  pins: Set<string>;
 }): React.ReactElement {
   const header = cell("Name", 30) + COLS.map((c) => cell(c.label, c.width)).join("");
   return (
@@ -40,8 +41,9 @@ export function ConfigList(props: {
         ];
         const line = cell(cells[0], 30) + cells.slice(1).map((v, ci) => cell(v, COLS[ci].width)).join("");
         const selected = i === props.selected;
+        const pinned = props.pins.has(r.name);
         return (
-          <Text key={r.name} backgroundColor={selected ? "#1e5c31" : undefined} color={selected ? "greenBright" : undefined}>
+          <Text key={r.name} backgroundColor={selected ? "#1e5c31" : undefined} color={selected ? "greenBright" : pinned ? "blue" : undefined}>
             {line}
           </Text>
         );

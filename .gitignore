@@ -5,3 +5,4 @@ benchmarks/
 logs/
 *.log
 *.bun-build
+pins.json

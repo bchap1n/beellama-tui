@@ -12,6 +12,7 @@ import { Filters, emptyFilters, filtersActive, matchesFilters, type FacetFilters
 import { Sources } from "./Sources.tsx";
 import { Scripts, SCRIPT_ACTIONS, type ScriptAction } from "./Scripts.tsx";
 import { installGpuTasks, runGpuTask, taskInstalled, APPLY_TASK } from "../gpu-profile.ts";
+import { loadPins, orderPinnedLast, savePins } from "../pins.ts";
 import { LaunchView, OutputView, outputScrollControls } from "./LaunchView.tsx";
 import { StatsBar } from "./StatsBar.tsx";
 import { probeGpu, type GpuStats } from "./gpu.ts";
@@ -22,7 +23,7 @@ import type { AppConfig, ResolvedConfig, SessionStats } from "../types.ts";
 type SortKey = "name" | "model" | "quant" | "ctx" | "provider" | "spec";
 const SORT_KEYS: SortKey[] = ["name", "model", "quant", "ctx", "provider", "spec"];
 
-function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: string[] }): React.ReactElement {
+export function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: string[] }): React.ReactElement {
   const { exit } = useApp();
   const [configs, setConfigs] = useState(props.configs);
   const [selected, setSelected] = useState(0);
@@ -55,6 +56,28 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   const lastLaunchedRef = useRef<string | undefined>(undefined);
   const abortBenchRef = useRef(false);
   const outputScrollRef = useRef(0);
+  // Pins: state drives rendering, the ref keeps rapid `p` presses on the file.
+  const [pins, setPinsState] = useState<Set<string>>(new Set());
+  const pinsRef = useRef(pins);
+  const pendingSelectRef = useRef<string | undefined>(undefined);
+
+  const setPins = useCallback((next: Set<string>) => {
+    pinsRef.current = next;
+    setPinsState(next);
+  }, []);
+
+  const togglePin = useCallback((name: string) => {
+    if (!name) return;
+    const next = new Set(pinsRef.current);
+    if (next.has(name)) next.delete(name); else next.add(name);
+    setPins(next);
+    pendingSelectRef.current = name; // keep the cursor on the row that moved
+    void savePins(next).catch((e: unknown) => setError(`pins: ${e instanceof Error ? e.message : String(e)}`));
+  }, [setPins]);
+
+  useEffect(() => {
+    void loadPins().then(setPins);
+  }, [setPins]);
 
   // Server liveness + stats refresh
   useEffect(() => {
@@ -88,8 +111,9 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
     const key = SORT_KEYS[sortIdx];
     const facetKey = key === "name" ? ("model" as const) : key;
     const dir = key === "ctx" ? -1 : 1;
-    return [...out].sort((a, b) => dir * String(a.facets[facetKey]).localeCompare(String(b.facets[facetKey]), undefined, { numeric: true }));
-  }, [configs, filterText, filters, sortIdx]);
+    const sorted = [...out].sort((a, b) => dir * String(a.facets[facetKey]).localeCompare(String(b.facets[facetKey]), undefined, { numeric: true }));
+    return orderPinnedLast(sorted, pins);
+  }, [configs, filterText, filters, sortIdx, pins]);
 
   // Latest rows/selection for input handlers: rapid keypresses otherwise act on a
   // stale render closure and launch the wrong row (e.g. glimmer instead of qwen).
@@ -97,7 +121,13 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
   viewRef.current.rows = rows; // rows sync from render; selected is write-through only
 
   useEffect(() => {
-    const cur = Math.min(viewRef.current.selected, Math.max(0, rows.length - 1));
+    let cur = Math.min(viewRef.current.selected, Math.max(0, rows.length - 1));
+    const want = pendingSelectRef.current;
+    if (want) {
+      const i = rows.findIndex((r) => r.name === want);
+      if (i >= 0) cur = i;
+      pendingSelectRef.current = undefined;
+    }
     viewRef.current.selected = cur;
     if (selected !== cur) setSelected(cur);
   }, [rows, selected]);
@@ -307,6 +337,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
       if (cfg) void doLaunch(cfg);
     }
     else if (input === "t") cycleThink(viewRef.current.rows[viewRef.current.selected]?.name ?? "");
+    else if (input === "p") togglePin(viewRef.current.rows[viewRef.current.selected]?.name ?? "");
     else if (input === "b") setBench((b) => ({ ...b, open: !b.open }));
     else if (input === "m") setShowSources((v) => !v);
     else if (input === "g") void openScripts();
@@ -376,7 +407,7 @@ function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; errors: stri
         <Text dimColor> {rows.length} configs · {props.appCfg.model_roots.length} sources</Text>
       </Box>
       {parseErrors.map((e) => <Text key={e} color="red">✗ {e}</Text>)}
-      <ConfigList rows={rows} selected={selected} />
+      <ConfigList rows={rows} selected={selected} pins={pins} />
       {(filterText || filterMode) && <Text>filter: /{filterText}{filterMode ? "_" : ""}</Text>}
       <Text dimColor>
         {helpFor(
@@ -424,7 +455,7 @@ function helpFor(mode: { filters: boolean; benchOpen: boolean; benchRunning: boo
   if (mode.filters) return "a-z toggle facet · c clear · esc done";
   if (mode.scripts) return "↑/↓ action · enter run · esc close";
   if (mode.sources) return "esc close";
-  return `${rowCount}/${total} shown · sort ${sortLabel} · enter launch · / filter · f facets · s sort · b bench · v output · x stop · l relaunch · t think · m sources · g scripts · q quit`;
+  return `${rowCount}/${total} shown · sort ${sortLabel} · enter launch · / filter · f facets · s sort · b bench · v output · x stop · l relaunch · t think · p pin · m sources · g scripts · q quit`;
 }
 
 function latestBenchDir(): string | undefined {

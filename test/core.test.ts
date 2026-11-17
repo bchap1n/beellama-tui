@@ -8,6 +8,7 @@ import { parseLaunchConfig, deriveFacets, buildArgs, quantOf, providerOf, resolv
 import { expandLongCtx } from "../src/bench/prompts.ts";
 import { rowsToCsv, CSV_HEADER, writeReport, analysisVerdict } from "../src/bench/report.ts";
 import { deltaTokPerSec, fetchMetrics } from "../src/metrics.ts";
+import { loadPins, orderPinnedLast, savePins } from "../src/pins.ts";
 import type { BenchResultRow, LaunchConfig } from "../src/types.ts";
 
 const ROOTS = ["D:/models", "C:/models"];
@@ -414,5 +415,21 @@ describe("config validation errors", () => {
   test("bad number type reports yaml path", () => {
     expect(() => parseLaunchConfig("name: x\nmodel: { gguf: a }\nspec: { type: mtp, draft_max: two }\n", "f.yaml"))
       .toThrow(/spec\.draft_max must be a number/);
+  });
+});
+
+describe("pinned configs", () => {
+  test("pinned rows sort below the rest and keep their order", () => {
+    const rows = [{ name: "c" }, { name: "a" }, { name: "b" }];
+    expect(orderPinnedLast(rows, new Set(["a"])).map((r) => r.name)).toEqual(["c", "b", "a"]);
+    expect(rows.map((r) => r.name)).toEqual(["c", "a", "b"]); // caller's array untouched
+  });
+  test("pins round-trip through the file, absent file means none", async () => {
+    const dir = join(tmpdir(), `pins-${crypto.randomUUID()}`);
+    await mkdir(dir, { recursive: true });
+    const file = join(dir, "pins.json");
+    expect([...(await loadPins(file))]).toEqual([]);
+    await savePins(new Set(["b", "a"]), file);
+    expect([...(await loadPins(file))]).toEqual(["a", "b"]);
   });
 });

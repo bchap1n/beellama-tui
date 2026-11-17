@@ -110,10 +110,13 @@ Validation errors name the file and YAML path.
 | `v` or alt-v | toggle live server output view |
 | `x` | stop server |
 | `l` | relaunch last |
+| `p` | pin/unpin selected config (pinned rows list last, in blue) |
 | space | pick config for bench scope |
 | `m` | model sources panel |
 | `g` | scripts menu (GPU profile) |
 | `q` | quit (stops server first) |
+
+Pins save to `pins.json` beside `beellama-tui.yaml` and load at start.
 
 ## Benchmark
 
