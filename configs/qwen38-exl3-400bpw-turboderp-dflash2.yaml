@@ -1,0 +1,20 @@
+# turboderp SCP 4.00bpw target + igor255 DFlash2 4.00bpw draft (5 layers,
+# block size 8, target layers 5/19/33/47/61). The drafter is 1.16 GB and its
+# layers are all sliding-attention (window 2048), so draft KV is ctx-independent.
+name: qwen38-exl3-400bpw-turboderp-dflash2
+label: Qwen3.8-27B turboderp EXL3 4.00bpw DFlash2
+description: 128K nvfp4 KV, 1.16GB DFlash2 4.00bpw draft via exllamav3 kit
+tags: [exl3, dflash2]
+build: exllamav3
+model:
+  dir: "${BEELLAMA_MODELS}/exl3/turboderp/Qwen3.8-27B-exl3-SCP_4.00bpw"
+  provider: turboderp
+ctx_size: 131072
+cache_quant: nvfp4
+draft_mode: dflash2
+draft_dir: "${BEELLAMA_MODELS}/exl3/igor255_dflash2_4.00bpw"
+port: 8082
+reasoning: true
+reasoning_effort: medium
+env:
+  NO_THINKING: "1"

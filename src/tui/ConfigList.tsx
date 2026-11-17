@@ -24,7 +24,9 @@ export function ConfigList(props: {
   selected: number;
   pins: Set<string>;
 }): React.ReactElement {
-  const header = cell("Name", 30) + COLS.map((c) => cell(c.label, c.width)).join("");
+  // Name column fits the longest name plus one space, so no name touches Model.
+  const nameWidth = Math.max("Name".length, ...props.rows.map((r) => r.name.length)) + 1;
+  const header = cell("Name", nameWidth) + COLS.map((c) => cell(c.label, c.width)).join("");
   return (
     <Box flexDirection="column">
       <Text color="green" bold>{header}</Text>
@@ -43,7 +45,7 @@ export function ConfigList(props: {
           f.vision ? "y" : "-",
           f.quality ? "*" : "-",
         ];
-        const line = cell(cells[0], 30) + cells.slice(1).map((v, ci) => cell(v, COLS[ci].width)).join("");
+        const line = cell(cells[0], nameWidth) + cells.slice(1).map((v, ci) => cell(v, COLS[ci].width)).join("");
         const selected = i === props.selected;
         const pinned = props.pins.has(r.name);
         return (

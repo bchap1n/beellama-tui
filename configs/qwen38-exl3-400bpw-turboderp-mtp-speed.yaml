@@ -1,0 +1,19 @@
+# 32K ctx, nvfp4 KV, MTP winner from the 2026-11-17 3090 ladder. Small KV
+# allocation leaves ~3 GiB more free VRAM than the 131072 rung without
+# changing the decoder or draft head.
+name: qwen38-exl3-400bpw-turboderp-mtp-speed
+label: Qwen3.8-27B turboderp EXL3 4.00bpw MTP Speed
+description: 32K nvfp4 KV, built-in MTP head, minimal VRAM footprint
+tags: [exl3, mtp, speed]
+build: exllamav3
+model:
+  dir: "${BEELLAMA_MODELS}/exl3/turboderp/Qwen3.8-27B-exl3-SCP_4.00bpw"
+  provider: turboderp
+ctx_size: 32768
+cache_quant: nvfp4
+draft_mode: mtp
+port: 8082
+reasoning: true
+reasoning_effort: medium
+env:
+  NO_THINKING: "1"
