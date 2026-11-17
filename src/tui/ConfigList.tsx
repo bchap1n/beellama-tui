@@ -7,12 +7,12 @@ const COLS = [
   { key: "quant", label: "Quant", width: 14 },
   { key: "ctx", label: "Ctx", width: 8 },
   { key: "size", label: "Size GB", width: 8 },
-  { key: "engine", label: "Engine", width: 10 },
   { key: "provider", label: "Provider", width: 12 },
   { key: "spec", label: "Spec", width: 7 },
   { key: "think", label: "Think", width: 7 },
   { key: "vision", label: "Vis", width: 4 },
   { key: "q", label: "Q", width: 2 },
+  { key: "engine", label: "Engine", width: 10 },
 ] as const;
 
 function cell(v: string, width: number): string {
@@ -38,12 +38,12 @@ export function ConfigList(props: {
           f.quant,
           String(f.ctx),
           f.size_gb === undefined ? "-" : f.size_gb.toFixed(1),
-          f.engine,
           f.provider,
           f.spec,
           !r.reasoning ? "[off]" : r.reasoning_effort === "xhigh" ? "[xhigh]" : r.reasoning_effort === "high" ? "[high]" : r.reasoning_effort === "medium" ? "[med]" : r.reasoning_effort === "low" ? "[low]" : "[on]",
           f.vision ? "y" : "-",
           f.quality ? "*" : "-",
+          f.engine,
         ];
         const line = cell(cells[0], nameWidth) + cells.slice(1).map((v, ci) => cell(v, COLS[ci].width)).join("");
         const selected = i === props.selected;
