@@ -1,0 +1,25 @@
+# Model card: https://huggingface.co/orcarouter/Flint-abliterated-GGUF
+# Local file: Flint-abliterated-Mix-12G.gguf (11.17 GiB), arch "flint",
+# 49 blocks, 256 experts / 6 used / 2 shared, 262144 native ctx.
+# Sampling comes from the file metadata (temp 1.0, top_p 0.95, top_k 20). The
+# template has no enable_thinking switch but the model still reasons before it
+# answers (23 reasoning tokens for a two-token reply), so reasoning stays on with
+# the house think-on cap.
+# Measured 2026-11-05 on beellama 0.5.0-dev build 13050: 262144 loads at 16.2 GiB
+# used, ~8.0 GiB free after a generation (quiet GPU) -- native max fits.
+name: flint-abliterated-mix-12g
+label: Flint Abliterated Mix 12G
+description: 256K kvarn KV, think on, no drafter
+tags: [maxctx]
+build: beellama
+model: { gguf: "${BEELLAMA_MODELS}/OrcaRouter/Flint-abliterated-Mix-12G.gguf" }
+ctx_size: 262144
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+sampling: { temp: 1.0, top_p: 0.95, top_k: 20 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+max_tokens: 12288

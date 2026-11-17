@@ -1,0 +1,45 @@
+# 262K ctx (the checkpoint's max_position_embeddings), nvfp4 KV, DFlash2 draft —
+# EXL3 via the MiaAI deployment kit (spawnExllamav3 forwards only MODEL_DIR/HOST/
+# PORT/CONTEXT_SIZE/CACHE_QUANT/DRAFT/DRAFT_DIR; a spec block here would be ignored).
+#
+# Measured 2026-11-16 on the 13.7 GB SAGE target + 1.07 GB 3.60bpw DFlash2 draft:
+# loaded at 262144 and finished a 40,660-token prefill plus generation at 23.7 GB
+# of 24 GB used (nvidia-smi, ~3.8 GB of which is the desktop baseline; ~0.9 GB
+# free). The 3.5bpw target + 5.0bpw draft pair crashed its spec-decode scratch at
+# 196608 and 163840 — this lighter pair held at the top rung. Re-probe if the
+# drafter, cache_quant, or desktop load changes.
+# Draft KV: the 3.60bpw drafter is all-SWA (layer_types all sliding_attention,
+# 5 layers), so its cache is ctx-independent; the whole ladder is target KV.
+#
+# Perf (measured 2026-11-16, 512 greedy tokens, 131072 ctx, nvfp4 unless noted).
+# The drafter is workload-dependent, not a blanket win or loss:
+#   task              dflash2  no draft   draft acceptance
+#   verbatim copy     54.5     37.1       18.7%   (+47%)
+#   code generation   36.8     37.8        8.5%   (-3%)
+#   prose answer      33.0     37.9        4.7%   (-13%)
+# Echo-heavy work (file edits quoting existing lines, rewrites) pays; free-form
+# generation pays the verify cost for nothing. A 5.0bpw drafter measured the same
+# acceptance cross-paired on this target (18.1/8.1/4.6%), and unquantized KV
+# raised it only to 19.1% while dropping speed to 16 tok/s — so the ceiling is the
+# drafter/target match, not the cache quant. 8/4 Hadamard KV with no drafter was
+# 38.0 tok/s at 262144 and fits (23.6 GB used).
+#
+# Text-only checkpoint: the repo ships no MTP head and no visual tensors, so
+# neither an MTP variant nor a VL variant can load against it.
+name: qwen38-exl3-364bpw-sage-maxctx
+label: Qwen3.8-27B SAGE EXL3 3.64bpw MaxCtx
+description: 256K nvfp4 KV, 1.07GB DFlash2 3.60bpw draft via exllamav3 kit
+tags: [exl3, dflash2, maxctx]
+build: exllamav3
+model:
+  dir: "${BEELLAMA_MODELS}/exl3/vcruz305_exl3"
+  provider: vcruz305
+ctx_size: 262144
+cache_quant: nvfp4
+draft_mode: dflash2
+draft_dir: "${BEELLAMA_MODELS}/exl3/vcruz305_exl3_dflash2_3.60bpw"
+port: 8082
+reasoning: true
+reasoning_effort: medium
+env:
+  NO_THINKING: "1"

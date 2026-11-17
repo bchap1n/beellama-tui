@@ -1,10 +1,22 @@
-# 160K ctx, n-cpu-moe 8, think ON
+# 160K ctx, n-cpu-moe 8, think ON + Ornith DFlash v1 drafter (Q8_0)
+# Weights: Q4_K_L 20.71 GiB + DFlash Q8_0 0.39 GiB. --n-cpu-moe 8 keeps 8 MoE
+# layers in RAM; the drafter's growing draft KV now also needs that headroom.
+# DRAFT KV GROWS WITH CTX. This drafter is 6 layers = 5 SWA (4096 window, fixed
+# 80 MiB f16) + 1 FULL-attention layer, unlike the all-SWA DFlash2 drafters where
+# draft KV is ctx-independent. Full layer = 8 kv heads x (128 K + 128 V) x 2 B =
+# 4 KiB/token f16, so total draft KV is 720 MiB f16 / 382 MiB at q8_0 here.
+# -ctkd/-ctvd q8_0 is set in extra_args.
+# n-max 15 = the clamp ceiling for this build: plain DFlash caps at block_size-1
+# (dflash.block_size=16), see common/speculative.cpp. Bee adaptive draft-max then
+# tunes down from there at runtime (plain DFlash v1 supports it; DFlash2 does not).
 name: ornith-q4kl-none-maxctx
-label: Ornith-1.5-35B-A3B Q4_K_L MaxCtx
-description: 163K kvarn KV, n-cpu-moe 8, think on, no spec
+label: Ornith-1.5-35B-A3B Q4_K_L MaxCtx DFlash
+description: 163K kvarn KV, n-cpu-moe 8, think on, DFlash n=15
 tags: [maxctx]
 build: beellama
 model: { gguf: "${BEELLAMA_MODELS}/bartowski/Ornith-1.5-35B-A3B-Q4_K_L.gguf", provider: bartowski }
+draft: { gguf: "${BEELLAMA_MODELS}/bartowski/Ornith-1.5-35B-A3B-DFlash-Q8_0.gguf" }
+spec: { type: draft-dflash, draft_max: 15 }
 ctx_size: 163840
 batch: 2048
 ubatch: 256
@@ -12,5 +24,8 @@ cache_k: kvarn4
 cache_v: kvarn3
 kv_tail_tokens: 1024
 reasoning: true
+# max_tokens 12288: think-on model — the global 4096 cap truncated 4/10 coding
+# prompts in 2026-10-03-02-34-21; house cap for every other think-on config.
+max_tokens: 12288
 sampling: { temp: 0.6, top_p: 0.95, top_k: 20, min_p: 0.0 }
-extra_args: ["--n-cpu-moe", "8", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+extra_args: ["--n-cpu-moe", "8", "--spec-draft-type-k", "q8_0", "--spec-draft-type-v", "q8_0", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

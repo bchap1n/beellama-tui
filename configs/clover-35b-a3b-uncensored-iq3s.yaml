@@ -1,0 +1,30 @@
+# Model card: https://huggingface.co/AtomicChat/Clover-35B-A3B-Preview-Uncensored-GGUF
+# Local file: Clover-35B-A3B-Preview-Uncensored-AD-IQ3_S-IQ3_XXS.gguf (14.4 GiB),
+# arch "clover_moe", 40 blocks, 256 experts / 8 used / 1 shared, 10 of 40 blocks
+# full attention (full_attention_interval 4), 131072 native ctx -- so this ctx is
+# the model's own max, not a VRAM-fit rung. At 10 full layers x (2 kv heads x 256)
+# x 2 B the f16 KV is ~20 KiB/token, about 2.6 GiB at native ctx before KVarN.
+# Sampling follows the file metadata (temp 1.0, top_p 1.0, repeat 1.05) plus the
+# card's run line (presence 0.9). No drafter file exists for this model.
+#
+# NOT LOADABLE YET: beellama 0.5.0-dev build 13050 still has no "clover_moe"
+# architecture. llama_model_load fails with
+#   unknown model architecture: 'clover_moe'
+# These files need llama.cpp b12052+ with the autoregressive-only layout
+# (PR #31306), which this tree does not carry yet.
+name: clover-35b-a3b-uncensored-iq3s
+label: Clover-35B-A3B Uncensored AD-IQ3_S
+description: 131K kvarn KV, think on, no drafter
+tags: [maxctx]
+build: beellama
+model: { gguf: "${BEELLAMA_MODELS}/AtomicChat/Clover-35B-A3B-Preview-Uncensored-AD-IQ3_S-IQ3_XXS.gguf" }
+ctx_size: 131072
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+sampling: { temp: 1.0, top_p: 1.0, min_p: 0.0, presence_penalty: 0.9, repeat_penalty: 1.05 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+max_tokens: 12288

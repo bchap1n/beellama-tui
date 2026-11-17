@@ -1,0 +1,26 @@
+# Qwopus3.8-27B Coder-Flash Q4_K_M, MTP draft n=4, max context.
+# Model card: https://huggingface.co/Jackrong/Qwopus3.8-27B-Coder-Flash-GGUF
+#
+# GGUF metadata: qwen35, 65 blocks, native ctx 262144, nextn_predict_layers 1,
+# 4 KV heads, key/value length 256, full_attention_interval 4 (16 full-attention layers).
+# Card sampling: temp 1.0, top_p 0.95, top_k 20. Reasoning effort medium.
+#
+# Not probed: the ctx and KV budget below come from header math, not a live load.
+# Probe on :8082 sequentially and step down the ctx ladder if a load fails.
+name: qwopus-27b-coder-q4km-mtp-maxctx
+label: Qwopus3.8-27B Coder-Flash Q4_K_M MTP MaxCtx
+description: 196K ctx, kvarn KV, MTP n=4, thinking on (medium)
+tags: [maxctx]
+build: beellama
+model: { gguf: "${BEELLAMA_MODELS}/jackrong/Qwopus-Coder/Qwopus3.8-27B-Coder-Flash-Q4_K_M.gguf" }
+spec: { type: draft-mtp, draft_max: 4 }
+ctx_size: 196608
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+reasoning_effort: medium
+sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
+max_tokens: 12288

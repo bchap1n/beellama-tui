@@ -1,0 +1,23 @@
+# Pilot: Anbeeld Bartowski-recipe Q4_K_M + SINQ (17.45 GB, mean KLD 0.0244 per
+# card). Flags are identical to qwen38-ud-q4km-mtp-maxctx (UD-Q4_K_M, 16.46 GB)
+# so a bench isolates the quant. SINQ GGUFs load only in BeeLlama.cpp v0.5.0+.
+# MTP layers are embedded at Q4_0.
+# VRAM: +0.92 GiB over the proven UD-Q4_K_M footprint at 160K; confirm at launch.
+name: qwen38-sinq-q4km-mtp-maxctx
+label: Qwen3.8-27B SINQ Q4_K_M MTP maxctx
+description: Bartowski+SINQ Q4_K_M, 160K kvarn KV, b4096/ub512, think on (medium), MTP n=2
+tags: [maxctx]
+build: beellama
+model: { gguf: "${BEELLAMA_MODELS}/anbeeld/qwen3.8-27B-sinq/Qwen3.8-27B-Q4_K_M-SINQ-w16-s0.75.gguf" }
+spec: { type: draft-mtp, draft_max: 2 }
+ctx_size: 163840
+batch: 4096
+ubatch: 512
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+reasoning_effort: medium
+sampling: { temp: 0.7, top_p: 0.80, top_k: 20, min_p: 0.0, presence_penalty: 1.5, repeat_penalty: 1.0 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+max_tokens: 12288

@@ -1,0 +1,23 @@
+# Model card: https://huggingface.co/AtomicChat/d1-2B-GGUF
+# Local file: d1-2B-AD-Q4_K_M.gguf (1.07 GiB), arch "lfm3", 24 blocks,
+# 128000 native ctx. Decision model: it answers a typed question over options and
+# is served by /v1/systemone, not the chat endpoint. Vision needs
+# mmproj-d1-2B-F16.gguf (shipped in the repo, not downloaded here), so this
+# config is text-only.
+#
+# Cache: lfm3 has no standard KV cache, so the house settings do not apply.
+# `--kv-tail-tokens` fails with "KV tail cache requested for a model without
+# cache memory", and `turbo4` fails context creation; q8_0 works.
+name: d1-2b-ad-q4km
+label: d1-2B AD-Q4_K_M
+description: 128K ctx, decision model via /v1/systemone
+tags: []
+build: beellama
+model: { gguf: "${BEELLAMA_MODELS}/AtomicChat/d1-2B-AD-Q4_K_M.gguf" }
+ctx_size: 128000
+batch: 2048
+ubatch: 256
+cache_k: q8_0
+cache_v: q8_0
+reasoning: false
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

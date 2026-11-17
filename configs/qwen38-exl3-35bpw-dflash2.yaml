@@ -18,5 +18,7 @@ cache_quant: nvfp4
 draft_mode: dflash2
 draft_dir: "${BEELLAMA_MODELS}/exl3/Qwen3.8-27B-DFlash2-EXL3-5.0bpw"
 port: 8082
+reasoning: true
+reasoning_effort: medium
 env:
   NO_THINKING: "1"

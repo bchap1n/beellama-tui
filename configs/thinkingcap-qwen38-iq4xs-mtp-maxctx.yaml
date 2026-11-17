@@ -1,5 +1,5 @@
 # 262K ctx (native max), kvarn4 K / kvarn3 V + 1024-token exact tail,
-# b2048/ub256, think ON (high), MTP n=4
+# b2048/ub256, think ON (medium), MTP n=4
 #
 # BottlecapAI ThinkingCap tune of Qwen3.8-27B IQ4_XS -- same arch. Weights
 # 14.41 GiB on disk, matching the huihui sibling (14.40) verified live at 262K.
@@ -16,7 +16,7 @@
 # Raise it, do not remove it.
 name: thinkingcap-qwen38-iq4xs-mtp-maxctx
 label: ThinkingCap Qwen3.8-27B IQ4_XS MTP MaxCtx
-description: 262K kvarn KV (native max), think on (high), MTP n=4
+description: 262K kvarn KV (native max), think on (medium), MTP n=4
 tags: [maxctx]
 build: beellama
 model: { gguf: "${BEELLAMA_MODELS}/bottlecapai/ThinkingCap-Qwen3.8-27B-IQ4_XS.gguf" }
@@ -28,7 +28,7 @@ cache_k: kvarn4
 cache_v: kvarn3
 kv_tail_tokens: 1024
 reasoning: true
-reasoning_effort: high
+reasoning_effort: medium
 sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
 extra_args: ["--reasoning-budget", "8192", "--chat-template-file", "${APP_ROOT}/configs/qwen38-ud-chat-template.jinja", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
 max_tokens: 12288

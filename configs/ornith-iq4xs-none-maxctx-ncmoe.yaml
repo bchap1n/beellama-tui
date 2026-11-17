@@ -1,10 +1,21 @@
-# 160K ctx, n-cpu-moe 4, think ON — AtomicChat IQ4_XS
+# 160K ctx, n-cpu-moe 4, think ON — AtomicChat IQ4_XS + Ornith DFlash v1 drafter (Q8_0)
+# Weights: IQ4_XS 17.44 GiB + DFlash Q8_0 0.39 GiB. --n-cpu-moe 4 keeps 4 MoE
+# layers in RAM; the drafter's growing draft KV now also needs that headroom.
+# DRAFT KV GROWS WITH CTX. This drafter is 6 layers = 5 SWA (4096 window, fixed
+# 80 MiB f16) + 1 FULL-attention layer, unlike the all-SWA DFlash2 drafters where
+# draft KV is ctx-independent. Full layer = 8 kv heads x (128 K + 128 V) x 2 B =
+# 4 KiB/token f16, so total draft KV is 720 MiB f16 / 382 MiB at q8_0 here.
+# n-max 15 = the clamp ceiling for this build: plain DFlash caps at block_size-1
+# (dflash.block_size=16), see common/speculative.cpp. Bee adaptive draft-max then
+# tunes down from there at runtime (plain DFlash v1 supports it; DFlash2 does not).
 name: ornith-iq4xs-none-maxctx-ncmoe
-label: Ornith-1.5-35B-A3B IQ4_XS MaxCtx Ncmoe
-description: 163K kvarn KV, n-cpu-moe 4, think on, no spec
+label: Ornith-1.5-35B-A3B IQ4_XS MaxCtx Ncmoe DFlash
+description: 163K kvarn KV, n-cpu-moe 4, think on, DFlash n=15
 tags: [maxctx]
 build: beellama
 model: { gguf: "${BEELLAMA_MODELS}/AtomicChat/Ornith-1.5-35B-A3B-IQ4_XS.gguf", provider: AtomicChat }
+draft: { gguf: "${BEELLAMA_MODELS}/AtomicChat/Ornith-1.5-35B-A3B-DFlash-Q8_0.gguf" }
+spec: { type: draft-dflash, draft_max: 15 }
 ctx_size: 163840
 batch: 2048
 ubatch: 256
@@ -12,5 +23,9 @@ cache_k: kvarn4
 cache_v: kvarn3
 kv_tail_tokens: 1024
 reasoning: true
+# max_tokens 24576: think-on model — ps_module_structure's reasoning drafts the whole
+# implementation; 4096/12288 caps cut it with 0 visible chars (run refs in comment).
+# 12288 cut mid-function-1 (~50k chars thinking); 24576 = 2x headroom for fn2 + answer.
+max_tokens: 24576
 sampling: { temp: 0.6, top_p: 0.95, top_k: 20, min_p: 0.0 }
-extra_args: ["--n-cpu-moe", "4", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+extra_args: ["--n-cpu-moe", "4", "--spec-draft-type-k", "q8_0", "--spec-draft-type-v", "q8_0", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]

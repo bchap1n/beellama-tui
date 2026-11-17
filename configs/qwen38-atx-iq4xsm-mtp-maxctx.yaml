@@ -1,0 +1,77 @@
+# 200K ctx, q8_0 K / turbo3 V, b4096/ub1024, think ON, vision OFF, MTP n=3 (llamAmpere)
+#
+# Model: jakeatx/Qwen3.8-27B-ATX-IQ4_XS-M
+#   https://huggingface.co/jakeatx/Qwen3.8-27B-ATX-IQ4_XS-M-GGUF
+#   File Qwen3.8-27B-ATX-4-XS.gguf, 15,588,551,712 B (14.5 GiB on disk, 13.9 GiB
+#   GPU-resident weights). IQ4_XS base with the Q4_K_M upgrade pattern: 4.56 bpw.
+#   Built from Unsloth's Qwen3.8-27B BF16 GGUF with Unsloth's imatrix.
+#
+# Engine: llamAmpere (JakeATX llama.cpp fork, TurboQuant+ with SM86 kernels).
+#   The fork is required: ctv turbo3 and the GGML_Q8_TURBO3_MMA_FUSED fused MMA
+#   path do not exist in beellama.cpp or upstream llama.cpp.
+#   https://github.com/JakeATX/llamAmpere
+#
+# Context: the card measures 245,760 (22.6 GiB peak) and 204,800 (20.9 GiB, peak
+#   21,422 MiB) as the two rungs. 200K is the rung used here: this 3090 is
+#   power-limited to 250 W and shares the card with the desktop, so the 245K
+#   rung leaves no margin. Raise ctx_size to 245760 only on a clear card.
+#
+# Record cache: 48 of the model's layers are recurrent, so an edited or
+#   regenerated turn can only resume from a saved state. --ctx-checkpoints 24
+#   with --checkpoint-min-step 10240 keeps those states in host RAM.
+#
+# MTP: --spec-type draft-mtp, n-max 3, p-min 0.45, draft cache q8_0/turbo3
+#   (the card's measured acceptance is 76% at 245K).
+# Prompt cache: the fork sizes it from host RAM (12,288 MiB on this 64 GB
+#   machine) and spills to a disk tier, so no --cache-ram is passed. The card's
+#   explicit 8192 is smaller than what the fork picks here.
+# Sampling: the card's measured setup (temp 1.0, top-k 20, top-p 0.95).
+# Thinking cap: --reasoning-budget 4096. Without it the model spends the whole
+#   12,288-token budget on self-review ("Potential issue: ... Good.") and emits
+#   no answer at all: 6 of 10 coding-benchmark prompts returned zero content.
+#   The server takes the thinking tags from the chat template, so the cap needs
+#   no marker flags. With it, requests end at 4.3-4.7K tokens: 4,096 thinking
+#   plus a graded answer.
+#
+# Measured on this host (RTX 3090 at 250 W, desktop using ~3.2 GiB):
+#   204,800 loads in 9 s; 23,421 MiB of 24,576 used, 1.1 GiB free;
+#   decode 65 tok/s, prefill 132 tok/s, MTP acceptance 0.75, mean draft 3.0.
+#   The fork logs "device expert prepare failed ... host experts" during decode:
+#   the B1 device expert table does not fit beside the desktop, so 1-8 row calls
+#   run experts on the host. It happens at 163,840 too, so ctx is not the cause.
+#   Decode stays inside the card's published 60-79 tok/s.
+name: qwen38-atx-iq4xsm-mtp-maxctx
+label: Qwen3.8-27B ATX-IQ4_XS-M MTP maxctx
+description: 200K q8_0/turbo3 KV, b4096/ub1024, think on, vision off, MTP n=3, llamAmpere
+tags: [maxctx]
+build: llamAmpere
+model: { gguf: "${BEELLAMA_MODELS}/jakeatx/Qwen3.8-27B-ATX-4-XS.gguf" }
+spec: { type: draft-mtp, draft_max: 3 }
+ctx_size: 204800
+batch: 4096
+ubatch: 1024
+cache_k: q8_0
+cache_v: turbo3
+reasoning: true
+sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0 }
+env: { GGML_Q8_TURBO3_MMA_FUSED: "1" }
+extra_args:
+  - "--spec-draft-p-min"
+  - "0.45"
+  - "--spec-draft-type-k"
+  - "q8_0"
+  - "--spec-draft-type-v"
+  - "turbo3"
+  - "--fit"
+  - "off"
+  - "--cache-prompt"
+  - "--ctx-checkpoints"
+  - "24"
+  - "--checkpoint-min-step"
+  - "10240"
+  - "--reasoning-budget"
+  - "4096"
+  - "--no-warmup"
+  - "--log-timestamps"
+  - "--log-prefix"
+max_tokens: 12288

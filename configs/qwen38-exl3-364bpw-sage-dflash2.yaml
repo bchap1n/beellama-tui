@@ -1,0 +1,32 @@
+# 128K ctx, nvfp4 KV, DFlash2 draft — EXL3 via the MiaAI deployment kit
+# (spawnExllamav3 forwards only MODEL_DIR/HOST/PORT/CONTEXT_SIZE/CACHE_QUANT/
+# DRAFT/DRAFT_DIR; a spec block here would be ignored).
+# Ladder source: measured 2026-09-27 on the 3.5bpw target + 5.0bpw DFlash2 —
+# 131072 held with ~2.8 GB free after load and ~1.4 GB floor during a 60K-token
+# prefill+generation; 163840 and 196608 crashed the DFlash2 spec-decode scratch
+# (~0.6 GB free at 196608). This pair is ~0.8 GB lighter (13.7 GB SAGE target +
+# 1.07 GB 3.60bpw drafter), so 131072 keeps its margin and 163840 is the first
+# rung worth probing — not a value to assume.
+# Draft KV: the 3.60bpw drafter is all-SWA (layer_types all sliding_attention,
+# window 2048), so its cache is ctx-independent; the whole ladder is target KV.
+# Perf 2026-11-16, workload-dependent (dflash2 vs no draft at 131072, nvfp4):
+# verbatim copy 54.5 vs 37.1 tok/s, code generation 36.8 vs 37.8, prose 33.0 vs
+# 37.9. Draft acceptance: 18.7% / 8.5% / 4.7%. Echo-heavy output pays, free-form
+# generation does not. Full numbers in the -sage-maxctx header.
+name: qwen38-exl3-364bpw-sage-dflash2
+label: Qwen3.8-27B SAGE EXL3 3.64bpw DFlash2
+description: 128K nvfp4 KV, 1.07GB DFlash2 3.60bpw draft via exllamav3 kit
+tags: [exl3, dflash2]
+build: exllamav3
+model:
+  dir: "${BEELLAMA_MODELS}/exl3/vcruz305_exl3"
+  provider: vcruz305
+ctx_size: 131072
+cache_quant: nvfp4
+draft_mode: dflash2
+draft_dir: "${BEELLAMA_MODELS}/exl3/vcruz305_exl3_dflash2_3.60bpw"
+port: 8082
+reasoning: true
+reasoning_effort: medium
+env:
+  NO_THINKING: "1"

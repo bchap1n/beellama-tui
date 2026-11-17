@@ -1,0 +1,19 @@
+# Qwopus3.8-27B Coder-Flash Q4_K_M, quality KV cache, MTP draft n=4.
+# Axis change from maxctx: q8_0 KV cache (no kvarn) at 65536 ctx, smaller ubatch.
+# Not probed: step ctx on :8082 if the load fails.
+name: qwopus-27b-coder-q4km-mtp-quality
+label: Qwopus3.8-27B Coder-Flash Q4_K_M MTP Quality
+description: 64K ctx, q8_0 KV cache, MTP n=4, thinking on (medium)
+tags: [quality]
+build: beellama
+model: { gguf: "${BEELLAMA_MODELS}/jackrong/Qwopus-Coder/Qwopus3.8-27B-Coder-Flash-Q4_K_M.gguf" }
+spec: { type: draft-mtp, draft_max: 4 }
+ctx_size: 65536
+batch: 2048
+ubatch: 256
+cache_k: q8_0
+cache_v: q8_0
+reasoning: true
+reasoning_effort: medium
+sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
+max_tokens: 12288

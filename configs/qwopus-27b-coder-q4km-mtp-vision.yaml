@@ -1,0 +1,25 @@
+# Qwopus3.8-27B Coder-Flash Q4_K_M, vision, MTP draft n=4.
+# Projector: Jackrong/Qwopus3.8-27B-Coder-Flash-GGUF mmproj-F32.gguf (1842940064 B,
+# matches HF; general.name "Qwopus3.8 27B Coder Flash").
+# Projector runs on GPU (mmproj_gpu: true) per the MMPROJ offload setting.
+# Ctx is 65536 to leave VRAM for the projector. Not probed: step ctx on :8082 if the load fails.
+name: qwopus-27b-coder-q4km-mtp-vision
+label: Qwopus3.8-27B Coder-Flash Q4_K_M MTP Vision
+description: 64K ctx, kvarn KV, projector on GPU, MTP n=4, thinking on (medium)
+tags: [vision]
+build: beellama
+model:
+  gguf: "${BEELLAMA_MODELS}/jackrong/Qwopus-Coder/Qwopus3.8-27B-Coder-Flash-Q4_K_M.gguf"
+  mmproj: "${BEELLAMA_MODELS}/jackrong/Qwopus-Coder/mmproj-F32.gguf"
+  mmproj_gpu: true
+spec: { type: draft-mtp, draft_max: 4 }
+ctx_size: 65536
+batch: 2048
+ubatch: 256
+cache_k: kvarn4
+cache_v: kvarn3
+kv_tail_tokens: 1024
+reasoning: true
+reasoning_effort: medium
+sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
+max_tokens: 12288

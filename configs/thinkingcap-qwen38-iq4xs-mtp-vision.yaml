@@ -1,5 +1,5 @@
 # 160K ctx, kvarn4 K / kvarn3 V + 1024-token exact tail, b2048/ub256,
-# vision ON (mmproj f16 on GPU), think ON (high), MTP n=4
+# vision ON (mmproj f16 on GPU), think ON (medium), MTP n=4
 #
 # Vision tower: bottlecapai mmproj-ThinkingCap-Qwen3.8-27B-f16 is VALUE-IDENTICAL
 # to the proven unsloth mmproj-BF16 (334 tensors, 224 F32 + 110 BF16, 0
@@ -17,7 +17,7 @@
 # Raise it, do not remove it.
 name: thinkingcap-qwen38-iq4xs-mtp-vision
 label: ThinkingCap Qwen3.8-27B IQ4_XS MTP Vision
-description: 160K kvarn KV, mmproj f16 on GPU, think on (high), MTP n=4
+description: 160K kvarn KV, mmproj f16 on GPU, think on (medium), MTP n=4
 tags: [vision]
 build: beellama
 model:
@@ -32,7 +32,7 @@ cache_k: kvarn4
 cache_v: kvarn3
 kv_tail_tokens: 1024
 reasoning: true
-reasoning_effort: high
+reasoning_effort: medium
 sampling: { temp: 1.0, top_p: 0.95, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
 extra_args: ["--reasoning-budget", "8192", "--chat-template-file", "${APP_ROOT}/configs/qwen38-ud-chat-template.jinja", "--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
 max_tokens: 12288
