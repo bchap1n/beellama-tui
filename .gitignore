@@ -1,8 +1,8 @@
 node_modules/
 dist/
 sessions/
-benchmarks/
-logs/
-*.log
-*.bun-build
+benchmarks/*
+!benchmarks/2026-11-18-ab/
+benchmarks/2026-11-18-ab/*
+!benchmarks/2026-11-18-ab/REPORT.md
 pins.json
