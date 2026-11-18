@@ -74,7 +74,7 @@ export function Benchmark(props: { state: BenchPanelState; targets: string[] }):
         <Text dimColor>  starting…</Text>
       )}
       {s.summary && <Text color="greenBright">  {s.summary}</Text>}
-      {s.resultDir && !s.running && <Text dimColor>  o — open {s.resultDir}/results.html</Text>}
+      {s.resultDir && !s.running && <Text dimColor>  o — open {s.resultDir.split(/[\\/]/).pop()}/results.html</Text>}
     </Box>
   );
 }

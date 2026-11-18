@@ -1,0 +1,27 @@
+# turboderp SCP 3.00bpw EXL3 target; the built-in MTP head is shadowed by the
+# HermiHg 3.7bpw mixed-precision MTP sidecar (mtp-3.7bpw.safetensors in the
+# model dir, 39 tensors replaced). Everything is resident in the 24 GB card:
+# weights 12,541 MiB + nvfp4 KV at 262,144 tokens ~4,600 MiB + scratch ~400 MiB
+# = ~17,500 MiB of server footprint, no host-side weights and no spill path at
+# all (exllamav3 has no dense CPU offload; the only offload flags are MoE-only).
+# Measured 2026-11-17 on the 3090: 21,733 MiB used / 2,590 MiB free with a
+# 4.2 GiB desktop, i.e. full model + full context in VRAM with margin. The
+# sidecar replaced all 39 MTP tensors and drafting is active (a single-sample
+# A/B against DRAFT=none was faster with MTP; no benchmark number is quoted
+# from one sample). Re-probe if the cache quant, sidecar, or desktop changes.
+name: qwen38-exl3-300bpw-turboderp-mtp-maxctx
+label: Qwen3.8-27B turboderp EXL3 3.00bpw MTP MaxCtx
+description: 256K nvfp4 KV, MTP head via 3.7bpw sidecar, fits in 24GB
+tags: [exl3, mtp, maxctx]
+build: exllamav3
+model:
+  dir: "${BEELLAMA_MODELS}/exl3/turboderp/Qwen3.8-27B-exl3-SCP_3.00bpw"
+  provider: turboderp
+ctx_size: 262144
+cache_quant: nvfp4
+draft_mode: mtp
+port: 8082
+reasoning: true
+reasoning_effort: medium
+env:
+  NO_THINKING: "1"

@@ -1,0 +1,26 @@
+# turboderp SCP 5.00bpw EXL3 target with the HermiHg 4.4bpw MTP sidecar and a
+# 3-bit KV cache, which is the only way this quant gets past ~49K on a 24 GB
+# card: 18.2 GiB of weights leaves ~6 GiB for KV, scratch, and the desktop.
+# Measured 2026-11-17 on the 3090 with a 4.1 GiB desktop and MTP on:
+#   load 22,924 / 1,399 MiB free; 48,663-token prefill in 65.4 s leaves
+#   1,371 MiB; decode min 7.19 s per 300 tokens (41.7 tok/s over three runs).
+# The same window at nvfp4 KV leaves 341 MiB after that prefill and decodes
+# slower, so this rung is larger AND faster than nvfp4 at 65,536. The price is
+# 3-bit KV precision, which is not quality-tested here; the -maxctx sibling is
+# the nvfp4 49,152 alternative. Launch with >= 4.5 GiB free VRAM.
+name: qwen38-exl3-500bpw-turboderp-mtp-maxctx-kv3
+label: Qwen3.8-27B turboderp EXL3 5.00bpw MTP MaxCtx KV3
+description: 64K 3-bit KV, MTP head via 4.4bpw sidecar, 1.4 GiB margin
+tags: [exl3, mtp, maxctx]
+build: exllamav3
+model:
+  dir: "${BEELLAMA_MODELS}/exl3/turboderp/Qwen3.8-27B-exl3-SCP_5.00bpw"
+  provider: turboderp
+ctx_size: 65536
+cache_quant: "3,3"
+draft_mode: mtp
+port: 8082
+reasoning: true
+reasoning_effort: medium
+env:
+  NO_THINKING: "1"

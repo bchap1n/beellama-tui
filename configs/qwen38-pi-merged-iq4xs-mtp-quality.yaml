@@ -1,0 +1,54 @@
+# harness-hub Qwen3.8-27B pi LoRA MERGED into the UD-IQ4_XS base.
+# Merge: llama-export-lora (UD-IQ4_XS + Qwen3.8-27B-pi-lora-F16.gguf) writes a hybrid
+#        GGUF (LoRA-touched tensors F16, untouched stay quantized), then
+#        llama-quantize --allow-requantize -> IQ4_XS. No --lora flag at runtime.
+# Speed (probe 2026-11-18, 3090, /metrics counters; acceptance differs by sampled
+# content so raw tok/s is not comparable across runs, per-verify-cycle time is):
+#   runtime --lora costs +25% per MTP verify cycle (44.9 -> 56.2 ms/cycle, 1664
+#   tokens both ways) and -13% prefill (884 -> 770 tok/s, 38K prompt).
+#   KVarN4/3+tail1024 costs -16% prefill vs q8_0 (770/884 -> 1055 tok/s at 160K)
+#   and -13% decode tok/s on the identical probe prompt (61.5 -> 69.3).
+#   This config drops both: q8_0 KV at 160K + merged weights = ud-mtp-quality parity.
+# Think ON at medium effort by user request (card says "never trained with thinking"); temp 0.7 top-p 0.80
+# per card. presence_penalty 0.0 (NOT the unsloth non-thinking chat card's 1.5 --
+# penalty-forced token choices produced a PSScriptAnalyzer syntax F on
+# code_ps_json_api in the 2026-11-18 pi-lora run; the ud-quality winner uses 0.0).
+# VRAM MEASURED 2026-11-18 on the 3090 at 163840 ctx + MTP + q8_0 KV: 23525 MiB used
+# with ~3.1 GiB already held by desktop+embedder (~1.0 GiB free). The merged model is
+# 14.2 GiB vs UD's 13.3 GiB, so this is ~0.9 GiB tighter than qwen38-ud-iq4xs-mtp-quality.
+# Quality gates: PPL parity with stock UD-IQ4_XS (1.5344 vs 1.5338, -c 2048) so the
+# --allow-requantize double-quant is not measurable; benchmark A/B vs ud-quality and
+# the old runtime-LoRA config lives in benchmarks/2026-11-18-ab/REPORT.md (86.6 tok/s
+# vs 80.5/78.0 controls, tldrScore 10.0, the syntax F eliminated).
+# REPRODUCE: llama-export-lora -m <UD-IQ4_XS.gguf> --lora <pi-lora-F16.gguf> -o <hybrid.gguf>
+#   then llama-quantize --allow-requantize <hybrid.gguf> <out.gguf> IQ4_XS (flag before
+#   positionals). Requant is mandatory: untouched tensors stay quantized in the hybrid.
+#   PPL parity vs stock UD-IQ4_XS is the damage check; no KL-divergence run was done.
+# DEAD ENDS (2026-11-18): think-ON is speed-neutral (55.5 vs 58.1 tok/s) - keep it for
+#   quality, not speed. exllamav3 fork PEFT-LoRA path: 50.3 tok/s vs 86.6 here and
+#   repeats the code_ps_json_api F; its fix would be merging into EXL3 weights - only
+#   worth it if llama.cpp ever plateaus below target.
+# Score ceiling: tldrScore caps at 10.0 and the old runtime-LoRA config already sat 9.84,
+#   so the delivered gain is the syntax F x3 -> A x3 (idiom 90) and ud-control syntax
+#   failures absent here - not a score delta.
+# Longctx: run 05 needle 10/12 vs ud 12/12 (ctx_multi_hop reps 2-3, wrong number not
+#   truncation); rerun 06 hit 12/12 -> temp-0.7 sampling variance, not a merge defect.
+#   medTok on that set is NOT a speed metric (wall includes ~240 s first-rep prefill).
+# If desktop drift OOMs the load, drop ctx_size to 147456 before touching cache types.
+name: qwen38-pi-merged-iq4xs-mtp-quality
+label: Qwen3.8-27B pi-merged UD-IQ4_XS MTP Quality
+description: pi LoRA baked into IQ4_XS, 160K q8_0 KV, think med, MTP n=4
+tags: [quality]
+build: beellama
+model: { gguf: "${BEELLAMA_MODELS}/harness-hub/Qwen3.8-27B-pi-GGUF/Qwen3.8-27B-pi-merged-IQ4_XS.gguf" }
+spec: { type: draft-mtp, draft_max: 4 }
+ctx_size: 163840
+batch: 2048
+ubatch: 256
+cache_k: q8_0
+cache_v: q8_0
+reasoning: true
+reasoning_effort: medium
+sampling: { temp: 0.7, top_p: 0.80, top_k: 20, min_p: 0.0, presence_penalty: 0.0, repeat_penalty: 1.0 }
+extra_args: ["--cache-ram", "0", "--no-warmup", "--log-timestamps", "--log-prefix"]
+max_tokens: 12288

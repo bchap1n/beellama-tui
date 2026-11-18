@@ -1,4 +1,6 @@
 // TUI root: config list, filters, launch/output views, stats, benchmark panel.
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 import { Box, Text, useApp, useInput, render } from "ink";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { loadAppConfig } from "../config.ts";
@@ -206,10 +208,14 @@ export function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; error
       return;
     }
     abortBenchRef.current = false;
+    let outDir: string | undefined;
     // Coding set grades one sample per prompt; extra runs would only duplicate rows.
     const runs = state.set === "coding" ? 1 : state.runs;
     setBench((b) => ({ ...b, running: true, progress: undefined, summary: `starting ${targets[0].name} · ${SET_LABELS[state.set] ?? state.set}` }));
-    const onProgress = (p: BenchProgress) => setBench((b) => ({ ...b, progress: p }));
+    const onProgress = (p: BenchProgress) => {
+      if (p.outDir) outDir = p.outDir;
+      setBench((b) => ({ ...b, progress: p }));
+    };
     try {
       await runBenchmark(
         { config: "", set: state.set, runs },
@@ -221,9 +227,9 @@ export function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; error
         ...b,
         running: false,
         summary: abortBenchRef.current
-          ? `aborted — partial results in ${latestBenchDir() ?? "benchmarks/"}`
+          ? `aborted — partial results in ${outDir ?? "benchmarks/"}`
           : `done · ${SET_LABELS[state.set] ?? state.set}`,
-        resultDir: latestBenchDir(),
+        resultDir: outDir,
       }));
     } catch (e) {
       setBench((b) => ({ ...b, running: false, summary: `failed: ${e instanceof Error ? e.message : String(e)}` }));
@@ -289,7 +295,9 @@ export function App(props: { appCfg: AppConfig; configs: ResolvedConfig[]; error
       }
       else if (key.return) void startBench(bench);
       else if (input === "o" && bench.resultDir) {
-        void Bun.spawn(["cmd", "/c", "start", "", `${bench.resultDir}/results.html`]).exited;
+        const report = resolve(bench.resultDir, "results.html");
+        if (existsSync(report)) void Bun.spawn(["cmd", "/c", "start", "", report]).exited;
+        else setBench((b) => ({ ...b, summary: `no report at ${report}` }));
       }
       return;
     }
@@ -456,17 +464,6 @@ function helpFor(mode: { filters: boolean; benchOpen: boolean; benchRunning: boo
   if (mode.scripts) return "↑/↓ action · enter run · esc close";
   if (mode.sources) return "esc close";
   return `${rowCount}/${total} shown · sort ${sortLabel} · enter launch · / filter · f facets · s sort · b bench · v output · x stop · l relaunch · t think · p pin · m sources · g scripts · q quit`;
-}
-
-function latestBenchDir(): string | undefined {
-  try {
-    const fs = require("node:fs") as typeof import("node:fs");
-    const base = "benchmarks";
-    const dirs = fs.readdirSync(base).sort();
-    return dirs.length > 0 ? `${base}/${dirs[dirs.length - 1]}` : undefined;
-  } catch {
-    return undefined;
-  }
 }
 
 export async function runTui(): Promise<void> {

@@ -124,6 +124,8 @@ export interface BenchProgress {
   tokPerSec: number;
   phase: "starting" | "warming" | "running" | "stopping" | "done" | "failed";
   note?: string;
+  // Set on the "done" event: the run directory that holds results.csv/results.html.
+  outDir?: string;
 }
 
 export async function runBenchmark(
@@ -317,7 +319,7 @@ export async function runBenchmark(
     console.log(`results: ${join(outDir, "results.csv")}`);
     console.log(`report:  ${join(outDir, "results.html")}`);
   }
-  onProgress?.({ configIndex: resolvedList.length, configCount: resolvedList.length, configName: "", promptIndex: 0, promptCount: 0, runIndex: 0, runCount: 0, tokPerSec: 0, phase: "done" });
+  onProgress?.({ configIndex: resolvedList.length, configCount: resolvedList.length, configName: "", promptIndex: 0, promptCount: 0, runIndex: 0, runCount: 0, tokPerSec: 0, phase: "done", outDir });
 
   // Open report in browser (headless mode only)
   if (!onProgress) {

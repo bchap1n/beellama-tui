@@ -7,6 +7,9 @@ process.env.BEELLAMA_REPO ??= ".";
 process.env.BEELLAMA_MODEL_ROOTS ??= ".";
 process.env.BEELLAMA_MODELS ??= ".";
 import { runBenchmark } from "../src/bench/runner.ts";
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { CSV_HEADER } from "../src/bench/report.ts";
 import { parseLaunchConfig } from "../src/launch-config.ts";
 import { resolveConfig } from "../src/launch-config.ts";
@@ -101,7 +104,9 @@ function stubConfig(name: string): ResolvedConfig {
 }
 
 async function tempOutDir(): Promise<string> {
-  return Bun.$`mktemp -d`.text().then((t) => t.trim().replaceAll("\\", "/"));
+  // mkdtempSync, not `mktemp -d`: Bun.$. resolves external tools from PATH, and a
+  // Windows host without Git/usr/bin has no mktemp.exe, so the shell call fails there.
+  return mkdtempSync(join(tmpdir(), "bench-")).replaceAll("\\", "/");
 }
 
 describe("runner integration vs stub server", () => {
